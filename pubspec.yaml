@@ -9,17 +9,22 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  http: ^0.13.3
-  excel: ^2.0.0-null-safety-3
-  path_provider: ^2.0.2
+  http: ^1.1.0
+  excel: ^4.0.6
+  path_provider: ^2.1.1
   cupertino_icons: ^1.0.8
-  window_manager: ^0.3.0
-  logging: ^1.0.2
+  window_manager: ^0.5.1
+  logging: ^1.2.0
+  intl: ^0.20.2
+  collection: ^1.18.0
+  flutter_typeahead: ^5.0.0
+  shared_preferences: ^2.2.2
+  url_launcher: ^6.2.2
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^4.0.0
+  flutter_lints: ^6.0.0
 
 flutter:
   uses-material-design: true
