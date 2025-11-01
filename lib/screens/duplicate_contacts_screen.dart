@@ -19,8 +19,8 @@ class _DuplicateContactsScreenState extends State<DuplicateContactsScreen> {
   final _duplicatesService = DuplicatesService();
 
   Map<String, List<Contact>> _duplicateGroups = {};
-  bool _isLoading = true;
-  String _status = 'Buscando contatos duplicados...';
+  bool _isLoading = false;
+  String _status = 'Carregue os contatos primeiro no Dashboard';
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   final Set<String> _selectedGroups = {};
@@ -29,7 +29,10 @@ class _DuplicateContactsScreenState extends State<DuplicateContactsScreen> {
   @override
   void initState() {
     super.initState();
-    _findDuplicateContacts();
+    // Só carrega se já tiver cache
+    if (_cacheService.isLoaded && _cacheService.count > 0) {
+      _findDuplicateContacts();
+    }
   }
 
   Future<void> _findDuplicateContacts() async {
@@ -42,15 +45,23 @@ class _DuplicateContactsScreenState extends State<DuplicateContactsScreen> {
 
     try {
       // Usa o cache
-      final allContacts = await _cacheService.getContacts();
+      final allContacts = await _cacheService.getContacts(
+        onStatusUpdate: (status) {
+          if (mounted) setState(() => _status = status);
+        },
+      );
+
+      if (mounted) setState(() => _status = 'Procurando duplicados...');
 
       // Usa o serviço de duplicados
       final groups = _duplicatesService.findDuplicateGroups(allContacts);
 
-      setState(() {
-        _duplicateGroups = groups;
-        _status = '${_duplicateGroups.length} grupos de duplicatas encontrados';
-      });
+      if (mounted) {
+        setState(() {
+          _duplicateGroups = groups;
+          _status = '${_duplicateGroups.length} grupos de duplicatas encontrados';
+        });
+      }
     } catch (e) {
       setState(() {
         _status = 'Erro: $e';
@@ -171,7 +182,7 @@ class _DuplicateContactsScreenState extends State<DuplicateContactsScreen> {
       return entry.value.any((contact) {
         final name = contact.name.toLowerCase();
         final email = contact.email?.toLowerCase() ?? '';
-        final phone = contact.phoneNumber?.toLowerCase() ?? '';
+        final phone = contact.phoneNumber.toLowerCase();
         
         return name.contains(query) || 
                email.contains(query) || 
@@ -199,8 +210,9 @@ class _DuplicateContactsScreenState extends State<DuplicateContactsScreen> {
           ),
         ],
       ),
-      body: Column(
-        children: [
+      body: SafeArea(
+        child: Column(
+          children: [
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: TextField(
@@ -232,12 +244,54 @@ class _DuplicateContactsScreenState extends State<DuplicateContactsScreen> {
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Column(
               children: [
-                Text(_status),
-                if (_duplicateGroups.isNotEmpty)
-                  Text('${_filteredGroups.length} grupos, ${_selectedGroups.length} selecionados'),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(child: Text(_status)),
+                    if (_duplicateGroups.isNotEmpty)
+                      Text('${_filteredGroups.length} grupos, ${_selectedGroups.length} selecionados'),
+                  ],
+                ),
+                if (_duplicateGroups.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: _isDeleting
+                            ? null
+                            : () {
+                                setState(() {
+                                  _selectedGroups.clear();
+                                  for (var group in _filteredGroups) {
+                                    _selectedGroups.add(group.key);
+                                  }
+                                });
+                              },
+                        icon: const Icon(Icons.check_box, size: 18),
+                        label: const Text('Selecionar Todos'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      OutlinedButton.icon(
+                        onPressed: _isDeleting || _selectedGroups.isEmpty
+                            ? null
+                            : () {
+                                setState(() => _selectedGroups.clear());
+                              },
+                        icon: const Icon(Icons.check_box_outline_blank, size: 18),
+                        label: const Text('Desmarcar Todos'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
@@ -286,6 +340,7 @@ class _DuplicateContactsScreenState extends State<DuplicateContactsScreen> {
                           ),
           ),
         ],
+        ),
       ),
     );
   }
@@ -391,7 +446,7 @@ class _DuplicateContactsScreenState extends State<DuplicateContactsScreen> {
             ],
           ),
           if (email != null && email.isNotEmpty) Text(email, style: const TextStyle(fontSize: 12.0)),
-          Text(phone ?? '', style: const TextStyle(fontSize: 12.0)),
+          Text(phone, style: const TextStyle(fontSize: 12.0)),
           if (updatedAt != null)
             Text(
               'Atualizado em: $updatedAt',

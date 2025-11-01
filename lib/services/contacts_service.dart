@@ -231,12 +231,61 @@ class ContactsStatistics {
     }
     final duplicateCount = phoneGroups.values.where((list) => list.length > 1).length;
 
+    // Conta telefones inválidos usando validação brasileira completa
+    int invalidPhoneCount = 0;
+    for (var contact in contacts) {
+      final phone = contact.phoneNumber;
+      final digits = phone.replaceAll(RegExp(r'\D+'), '');
+      final cleanDigits = digits.startsWith('55') ? digits.substring(2) : digits;
+
+      // Inválido se:
+      // - Muito curto (< 10 dígitos)
+      // - Muito longo (> 11 dígitos)
+      // - DDD inválido
+      if (cleanDigits.length < 10 || cleanDigits.length > 11) {
+        invalidPhoneCount++;
+      } else if (cleanDigits.length >= 2) {
+        final ddd = int.tryParse(cleanDigits.substring(0, 2));
+        final validDDDs = [11, 12, 13, 14, 15, 16, 17, 18, 19, // SP
+                          21, 22, 24, // RJ
+                          27, 28, // ES
+                          31, 32, 33, 34, 35, 37, 38, // MG
+                          41, 42, 43, 44, 45, 46, // PR
+                          47, 48, 49, // SC
+                          51, 53, 54, 55, // RS
+                          61, // DF
+                          62, 64, // GO
+                          63, // TO
+                          65, 66, // MT
+                          67, // MS
+                          68, // AC
+                          69, // RO
+                          71, 73, 74, 75, 77, // BA
+                          79, // SE
+                          81, 87, // PE
+                          82, // AL
+                          83, // PB
+                          84, // RN
+                          85, 88, // CE
+                          86, 89, // PI
+                          91, 93, 94, // PA
+                          92, 97, // AM
+                          95, // RR
+                          96, // AP
+                          98, 99, // MA
+                         ];
+        if (ddd == null || !validDDDs.contains(ddd)) {
+          invalidPhoneCount++;
+        }
+      }
+    }
+
     return ContactsStatistics(
       total: contacts.length,
       withoutCountryCode: contacts.where((c) => !c.hasCountryCode).length,
       duplicates: duplicateCount,
       withoutCompany: contacts.where((c) => !c.hasCompany).length,
-      invalidPhone: contacts.where((c) => !c.hasValidPhone).length,
+      invalidPhone: invalidPhoneCount,
       invalidEmail: contacts.where((c) => c.email != null && !c.hasValidEmail).length,
       withoutName: contacts.where((c) => c.name.isEmpty).length,
     );

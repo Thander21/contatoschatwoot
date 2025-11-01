@@ -1,9 +1,7 @@
-import 'package:logging/logging.dart';
 import '../models/contact.dart';
 
 /// Serviço para gerenciamento de empresas e renomeação de contatos
 class CompanyService {
-  final _logger = Logger('CompanyService');
 
   /// Padrões comuns de empresa no nome
   static final _companyPatterns = [

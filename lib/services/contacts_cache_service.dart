@@ -24,10 +24,14 @@ class ContactsCacheService {
   final List<Function(List<Contact>)> _listeners = [];
 
   /// Retorna os contatos do cache (se já carregados) ou carrega da API
-  Future<List<Contact>> getContacts({bool forceReload = false}) async {
+  Future<List<Contact>> getContacts({
+    bool forceReload = false,
+    Function(String)? onStatusUpdate,
+  }) async {
     // Se já está carregando, aguarda
     if (_isLoading) {
       _log.info('Já está carregando contatos, aguardando...');
+      onStatusUpdate?.call('Carregamento em andamento...');
       while (_isLoading) {
         await Future.delayed(Duration(milliseconds: 100));
       }
@@ -37,22 +41,25 @@ class ContactsCacheService {
     // Se já tem cache e não é reload forçado, retorna o cache
     if (_isLoaded && !forceReload) {
       _log.info('Retornando ${_cachedContacts.length} contatos do cache');
+      onStatusUpdate?.call('${_cachedContacts.length} contatos do cache');
       return _cachedContacts;
     }
 
     // Carrega da API
-    return await _loadFromApi();
+    return await _loadFromApi(onStatusUpdate: onStatusUpdate);
   }
 
   /// Carrega contatos da API e atualiza o cache
-  Future<List<Contact>> _loadFromApi() async {
+  Future<List<Contact>> _loadFromApi({Function(String)? onStatusUpdate}) async {
     _isLoading = true;
     _log.info('Carregando contatos da API...');
+    onStatusUpdate?.call('Iniciando carregamento da API...');
 
     try {
       final contacts = await _contactsService.fetchAllContacts(
         onStatusUpdate: (status) {
           _log.fine(status);
+          onStatusUpdate?.call(status);
         },
       );
 
@@ -60,7 +67,9 @@ class ContactsCacheService {
       _isLoaded = true;
       _lastLoadTime = DateTime.now();
 
-      _log.info('✅ ${contacts.length} contatos carregados e salvos no cache');
+      final successMsg = '✅ ${contacts.length} contatos carregados e salvos no cache';
+      _log.info(successMsg);
+      onStatusUpdate?.call(successMsg);
 
       // Notifica todos os listeners
       _notifyListeners();
@@ -68,6 +77,7 @@ class ContactsCacheService {
       return _cachedContacts;
     } catch (e) {
       _log.severe('Erro ao carregar contatos: $e');
+      onStatusUpdate?.call('Erro ao carregar: $e');
       rethrow;
     } finally {
       _isLoading = false;
@@ -75,9 +85,9 @@ class ContactsCacheService {
   }
 
   /// Força recarregamento dos contatos
-  Future<List<Contact>> reload() async {
+  Future<List<Contact>> reload({Function(String)? onStatusUpdate}) async {
     _log.info('🔄 Forçando reload dos contatos...');
-    return await getContacts(forceReload: true);
+    return await getContacts(forceReload: true, onStatusUpdate: onStatusUpdate);
   }
 
   /// Atualiza um contato específico no cache

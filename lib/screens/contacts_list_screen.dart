@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import '../models/contact.dart';
 import '../services/contacts_cache_service.dart';
-import '../services/contacts_service.dart';
 import '../services/backup_service.dart';
 
 class ContactsListScreen extends StatefulWidget {
@@ -20,13 +19,16 @@ class _ContactsListScreenState extends State<ContactsListScreen> {
 
   List<Contact> _allContacts = [];
   List<Contact> _filteredContacts = [];
-  bool _isLoading = true;
-  String _status = 'Carregando contatos...';
+  bool _isLoading = false;
+  String _status = 'Carregue os contatos primeiro no Dashboard';
 
   @override
   void initState() {
     super.initState();
-    _loadContacts();
+    // Só carrega se já tiver cache
+    if (_cacheService.isLoaded && _cacheService.count > 0) {
+      _loadContacts();
+    }
   }
 
   Future<void> _loadContacts() async {
@@ -39,14 +41,20 @@ class _ContactsListScreenState extends State<ContactsListScreen> {
 
     try {
       // Usa o cache
-      final contacts = await _cacheService.getContacts();
+      final contacts = await _cacheService.getContacts(
+        onStatusUpdate: (status) {
+          if (mounted) setState(() => _status = status);
+        },
+      );
 
-      setState(() {
-        _allContacts = contacts;
-        _filteredContacts = contacts;
-        _status = '${contacts.length} contatos carregados';
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _allContacts = contacts;
+          _filteredContacts = contacts;
+          _status = '${contacts.length} contatos carregados';
+          _isLoading = false;
+        });
+      }
     } catch (e) {
       _logger.severe('Erro ao carregar contatos', e);
       if (mounted) {

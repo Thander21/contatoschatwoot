@@ -1,27 +1,42 @@
 # Gerenciador de Contatos Chatwoot
 
-Aplicação Flutter Desktop para gerenciamento completo de contatos da plataforma Chatwoot, com funcionalidades de backup, formatação, remoção de duplicados e gerenciamento de empresas.
+Aplicação Flutter Desktop para gerenciamento completo de contatos da plataforma Chatwoot, com funcionalidades de backup, formatação, remoção de duplicados, gerenciamento de empresas e validação de telefones brasileiros.
 
 ## 📋 Funcionalidades
 
 ### ✅ Implementadas
 
 - **Dashboard com Estatísticas**: Visão geral de todos os contatos e problemas detectados
+- **Sistema de Cache Inteligente**:
+  - Carrega contatos uma vez e mantém em memória
+  - Atualização automática entre telas
+  - Reload manual apenas quando necessário
+  - Elimina carregamentos desnecessários da API
 - **Backup/Export para Excel**: Exporta todos os contatos para planilha Excel com timestamp
 - **Formatação de Telefones em Lote**:
   - Adiciona código do país (+55)
   - Corrige formato antigo (remove 0 inicial)
   - Adiciona DDD padrão para números incompletos
-  - Permite seleção individual ou em lote
+  - Lista apenas telefones válidos (exclui inválidos que vão para tela específica)
+  - Checkbox no lado esquerdo (padrão com outras telas)
+  - Permite seleção individual ou em lote com "Selecionar Todos"
+- **Validação e Limpeza de Telefones Inválidos**:
+  - Valida números de telefone brasileiros (formato +55 + DDD + 8-9 dígitos)
+  - Verifica DDDs válidos de todos os estados brasileiros
+  - Identifica e explica motivos de invalidação (DDD inexistente, muito curto/longo, etc.)
+  - Permite exclusão em massa de contatos com telefones inválidos
+  - Interface com busca e seleção múltipla
 - **Gerenciamento de Duplicados**:
   - Detecta contatos com telefones duplicados
   - Mantém o contato mais recente e completo
   - Permite seleção de quais grupos remover
+  - Botões "Selecionar Todos" e "Desmarcar Todos"
 - **Gerenciamento de Empresas**:
   - Extrai empresa do nome (padrão "Nome - Empresa")
   - Sugere empresas baseado no domínio do email
   - Permite edição manual das empresas
   - Preenche campo company nos contatos
+  - Seleção em lote facilitada
 - **Listagem Completa**: Lista todos os contatos com busca e filtros
 
 ## 🏗️ Arquitetura
@@ -33,12 +48,13 @@ lib/
 ├── main.dart                           # Ponto de entrada
 ├── contact_management_routes.dart      # Rotas da aplicação
 ├── models/
-│   └── contact.dart                    # Modelo de dados Contact
+│   └── contact.dart                    # Modelo de dados Contact com parsing flexível
 ├── services/
 │   ├── api_config.dart                 # Configurações da API
 │   ├── contacts_service.dart           # Serviço de comunicação com API
+│   ├── contacts_cache_service.dart     # Serviço de cache em memória (singleton)
 │   ├── backup_service.dart             # Serviço de backup/export
-│   ├── phone_formatter_service.dart    # Serviço de formatação de telefone
+│   ├── phone_formatter_service.dart    # Serviço de formatação e validação de telefone
 │   ├── company_service.dart            # Serviço de gerenciamento de empresas
 │   └── duplicates_service.dart         # Serviço de detecção de duplicados
 └── screens/
@@ -46,15 +62,19 @@ lib/
     ├── contacts_list_screen.dart       # Lista completa de contatos
     ├── phone_format_screen.dart        # Tela de formatação de telefones
     ├── duplicate_contacts_screen.dart  # Tela de duplicados
-    └── company_management_screen.dart  # Tela de gerenciamento de empresas
+    ├── company_management_screen.dart  # Tela de gerenciamento de empresas
+    └── invalid_phones_screen.dart      # Tela de telefones inválidos (NEW)
 ```
 
 ### Padrões Utilizados
 
 - **Service Layer**: Toda lógica de negócio está em serviços separados
-- **Model-First**: Modelo de dados tipado para contatos
+- **Singleton Pattern**: Cache centralizado compartilhado entre todas as telas
+- **Observer Pattern**: Listeners notificam mudanças no cache para atualização automática
+- **Model-First**: Modelo de dados tipado para contatos com parsing flexível (int/String)
 - **Stateful Screens**: Cada tela gerencia seu próprio estado
 - **Async/Await**: Operações assíncronas para chamadas de API
+- **Cache-First**: Carrega da API apenas quando necessário, prioriza cache em memória
 
 ## 🚀 Como Usar
 
@@ -111,10 +131,12 @@ A tela inicial mostra:
 ### Corrigir Telefones
 
 1. Acesse "Corrigir Telefones" no dashboard
-2. Filtre por tipo de problema (Sem +55, Formato antigo, etc)
-3. Selecione os contatos desejados (individual ou todos)
-4. Clique em "Formatar" para aplicar correções
-5. Aguarde a conclusão do processo
+2. **Apenas telefones VÁLIDOS** são listados (telefones inválidos vão para tela específica)
+3. Filtre por tipo de problema (Sem +55, Formato antigo, etc)
+4. Selecione os contatos usando checkbox à esquerda (individual ou "Selecionar Todos")
+5. Clique em "Formatar" para aplicar correções
+6. Aguarde a conclusão do processo
+7. Telefones com DDD inválido ou formato incorreto não aparecem aqui
 
 ### Remover Duplicados
 
@@ -132,8 +154,21 @@ A tela inicial mostra:
    - Com sugestão: Sistema sugeriu empresa baseado em email
    - Empresa no nome: Tem padrão "Nome - Empresa"
 3. Edite manualmente a empresa de cada contato
-4. Selecione e processe em lote
+4. Use "Selecionar Todos" para processar em lote
 5. As empresas serão extraídas e salvas no campo `company`
+
+### Limpar Telefones Inválidos (NOVO)
+
+1. Acesse "Telefones Inválidos" no dashboard
+2. O sistema mostrará contatos com telefones que não seguem o padrão brasileiro:
+   - DDDs inexistentes
+   - Números muito curtos (menos de 10 dígitos)
+   - Números muito longos (mais de 11 dígitos)
+3. Use a busca para filtrar contatos específicos
+4. Selecione contatos individuais ou use "Selecionar Todos"
+5. Cada contato mostra o motivo da invalidação
+6. Confirme a exclusão dos contatos selecionados
+7. **ATENÇÃO**: Esta ação é irreversível - faça backup antes!
 
 ## 🔧 Manutenção
 
@@ -177,7 +212,29 @@ A aplicação usa `package:logging` para logs detalhados:
 2. Sem autenticação de usuário
 3. Sem histórico de operações (undo/redo)
 4. Sem validação de regras de negócio customizadas
-5. Paginação carrega todas as páginas (pode ser lento com muitos contatos)
+5. Cache apenas em memória (perdido ao fechar o app)
+
+## 🆕 Melhorias Recentes
+
+### Sistema de Cache (v2.0)
+- Implementado `ContactsCacheService` singleton
+- Elimina múltiplos carregamentos da API
+- Atualização automática entre telas via listeners
+- Carregamento manual controlado pelo usuário
+- Parsing flexível de timestamps (int ou String)
+
+### Validação de Telefones Brasileiros (v2.1)
+- Nova tela "Telefones Inválidos"
+- Validação completa de DDDs brasileiros (todos os estados)
+- Explicação detalhada do motivo de invalidação
+- Exclusão em massa com confirmação
+- Interface com busca e seleção múltipla
+
+### Melhorias de UX
+- Botões "Selecionar Todos" e "Desmarcar Todos" em todas as telas de seleção múltipla
+- Indicadores de progresso durante operações longas
+- Mensagens de status detalhadas
+- Sem auto-loading: app inicia instantaneamente
 
 ## 🔐 Segurança
 

@@ -1,9 +1,7 @@
-import 'package:logging/logging.dart';
 import '../models/contact.dart';
 
 /// Serviço para formatação de números de telefone
 class PhoneFormatterService {
-  final _logger = Logger('PhoneFormatterService');
 
   /// Formata um número de telefone para o padrão brasileiro +55
   String formatPhoneNumber(String phone, {String defaultDDD = '11'}) {
@@ -127,6 +125,70 @@ class PhoneFormatterService {
       'empty': grouped[PhoneIssueType.empty]?.length ?? 0,
       'valid': grouped[PhoneIssueType.valid]?.length ?? 0,
     };
+  }
+
+  /// Valida se o telefone segue o padrão brasileiro correto
+  /// Padrão: +55 [DDD com 2 dígitos] [Número com 8 ou 9 dígitos]
+  /// Exemplo: +55 11 98765-4321 ou +55 21 3456-7890
+  bool isValidBrazilianPhone(String phone) {
+    if (phone.isEmpty) return false;
+
+    // Remove todos os caracteres não numéricos
+    String digits = phone.replaceAll(RegExp(r'\D+'), '');
+
+    // Remove código do país se existir
+    if (digits.startsWith('55')) {
+      digits = digits.substring(2);
+    }
+
+    // Deve ter exatamente 10 ou 11 dígitos (DDD + número)
+    if (digits.length != 10 && digits.length != 11) {
+      return false;
+    }
+
+    // Extrai DDD (primeiros 2 dígitos)
+    final ddd = int.tryParse(digits.substring(0, 2));
+    if (ddd == null) return false;
+
+    // Lista de DDDs válidos no Brasil
+    final validDDDs = [
+      11, 12, 13, 14, 15, 16, 17, 18, 19, // SP
+      21, 22, 24, // RJ
+      27, 28, // ES
+      31, 32, 33, 34, 35, 37, 38, // MG
+      41, 42, 43, 44, 45, 46, // PR
+      47, 48, 49, // SC
+      51, 53, 54, 55, // RS
+      61, // DF
+      62, 64, // GO
+      63, // TO
+      65, 66, // MT
+      67, // MS
+      68, // AC
+      69, // RO
+      71, 73, 74, 75, 77, // BA
+      79, // SE
+      81, 87, // PE
+      82, // AL
+      83, // PB
+      84, // RN
+      85, 88, // CE
+      86, 89, // PI
+      91, 93, 94, // PA
+      92, 97, // AM
+      95, // RR
+      96, // AP
+      98, 99, // MA
+    ];
+
+    return validDDDs.contains(ddd);
+  }
+
+  /// Filtra contatos com telefones inválidos (não seguem padrão brasileiro)
+  List<Contact> getContactsWithInvalidPhones(List<Contact> contacts) {
+    return contacts.where((contact) {
+      return !isValidBrazilianPhone(contact.phoneNumber);
+    }).toList();
   }
 }
 

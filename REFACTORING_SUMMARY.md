@@ -13,8 +13,9 @@ Criada camada de serviços separados por responsabilidade:
 #### Serviços Criados:
 - **`api_config.dart`**: Configurações centralizadas da API (URL, token, headers)
 - **`contacts_service.dart`**: Comunicação com API Chatwoot (CRUD, estatísticas)
+- **`contacts_cache_service.dart`**: Cache singleton em memória com listeners (v2.0)
 - **`backup_service.dart`**: Export para Excel, listagem de backups
-- **`phone_formatter_service.dart`**: Formatação e validação de telefones
+- **`phone_formatter_service.dart`**: Formatação e validação de telefones brasileiros
 - **`company_service.dart`**: Extração de empresas, sugestões, renomeação
 - **`duplicates_service.dart`**: Detecção e mesclagem de duplicados
 
@@ -25,6 +26,7 @@ Criado `models/contact.dart` com:
 - ✅ Métodos auxiliares (`hasCountryCode`, `hasValidPhone`, `extractCompanyFromName`)
 - ✅ Conversão JSON bidirecional (`fromJson`, `toJson`)
 - ✅ `copyWith` para imutabilidade
+- ✅ Parsing flexível de timestamps (aceita int ou String) (v2.0)
 
 ### 3. **Telas Completas e Funcionais**
 
@@ -35,7 +37,8 @@ screens/
 ├── contacts_list_screen.dart       # Lista completa com busca e export
 ├── phone_format_screen.dart        # Correção de telefones em lote
 ├── duplicate_contacts_screen.dart  # Gerenciamento de duplicados
-└── company_management_screen.dart  # Gerenciamento de empresas
+├── company_management_screen.dart  # Gerenciamento de empresas
+└── invalid_phones_screen.dart      # Telefones inválidos (v2.1)
 ```
 
 #### Funcionalidades por Tela:
@@ -54,8 +57,10 @@ screens/
 
 **Formatação de Telefones**:
 - Detecta 5 tipos de problemas
+- Lista apenas telefones válidos (exclui inválidos)
+- Checkbox no lado esquerdo (padrão UX)
 - Filtros por categoria
-- Seleção múltipla
+- Seleção múltipla com botões auxiliares
 - Preview da formatação antes de aplicar
 - Processamento em lote
 
@@ -71,6 +76,15 @@ screens/
 - Edição manual
 - Processamento em lote
 - 3 filtros: Todos, Com sugestão, No nome
+- Botões "Selecionar Todos" e "Desmarcar Todos" (v2.0)
+
+**Telefones Inválidos (v2.1)**:
+- Valida formato brasileiro (+55 + DDD + 8-9 dígitos)
+- Verifica DDDs válidos de todos os estados
+- Mostra motivo da invalidação para cada contato
+- Busca e filtros em tempo real
+- Seleção múltipla com botões auxiliares
+- Exclusão em massa com confirmação
 
 ### 4. **Sistema de Rotas Atualizado**
 
@@ -81,6 +95,7 @@ Novo arquivo `contact_management_routes.dart`:
 '/phone-format': Formatação de telefones
 '/duplicates': Duplicados
 '/company-management': Empresas
+'/invalid-phones': Telefones inválidos (v2.1)
 ```
 
 ### 5. **Funcionalidades Implementadas**
@@ -111,6 +126,26 @@ Novo arquivo `contact_management_routes.dart`:
 - Sugestão automática
 - Edição manual
 - Atualiza campo `company` e adiciona ao nome
+
+#### ✅ Validação de Telefones Brasileiros (v2.1):
+- Lista completa de DDDs válidos (todos os estados brasileiros)
+- Validação de formato: +55 + [DDD 2 dígitos] + [8-9 dígitos]
+- Identificação de problemas:
+  - DDD inexistente no Brasil
+  - Número muito curto (< 10 dígitos)
+  - Número muito longo (> 11 dígitos)
+  - Telefone vazio
+- Interface dedicada para exclusão de inválidos
+- Explicação do motivo de cada invalidação
+
+#### ✅ Sistema de Cache em Memória (v2.0):
+- Singleton `ContactsCacheService`
+- Carrega contatos uma vez da API
+- Mantém em memória durante toda sessão
+- Listeners notificam mudanças entre telas
+- Atualização automática após operações
+- Reload manual controlado pelo usuário
+- Elimina carregamentos repetidos da API
 
 ### 6. **Limpeza de Código**
 
@@ -173,9 +208,10 @@ Criado `README.md` com:
 
 ### Seleção Inteligente:
 - Checkboxes para seleção múltipla
-- "Selecionar todos" implícito
+- Botões "Selecionar Todos" e "Desmarcar Todos" (v2.0)
 - Contador de itens selecionados
 - Preview antes de aplicar mudanças
+- Seleção persistente durante busca/filtros
 
 ### Filtros e Busca:
 - Chips de filtro por categoria
@@ -191,20 +227,20 @@ Criado `README.md` com:
 
 ## 📈 Estatísticas da Refatoração
 
-- **Arquivos criados**: 13
+- **Arquivos criados**: 14 (v2.1)
 - **Arquivos removidos**: 9
-- **Serviços**: 6
-- **Telas**: 5
-- **Linhas de código**: ~4000+ (organizadas)
-- **Funcionalidades**: 100% implementadas
+- **Serviços**: 7 (v2.0)
+- **Telas**: 6 (v2.1)
+- **Linhas de código**: ~4500+ (organizadas)
+- **Funcionalidades**: 100% implementadas + melhorias
 
 ## 🚀 Próximos Passos Recomendados
 
 ### Curto Prazo:
 1. ⚠️ Mover token para arquivo `.env` ou SharedPreferences
 2. ✅ Adicionar testes unitários para serviços
-3. ✅ Implementar cache local (SQLite/Hive)
-4. ✅ Adicionar indicador de progresso global
+3. ⏸️ Implementar cache persistente (SQLite/Hive) - Cache em memória já implementado (v2.0)
+4. ✅ Indicadores de progresso - Implementados em todas as telas
 
 ### Médio Prazo:
 1. ✅ Histórico de operações (undo/redo)
@@ -257,5 +293,34 @@ A refatoração transformou um projeto desorganizado em uma **aplicação profis
 ✅ Renomeação e empresas
 ✅ Listagem e filtros
 ✅ Dashboard com estatísticas
+✅ Cache inteligente em memória (v2.0)
+✅ Validação de telefones brasileiros (v2.1)
+✅ Botões de seleção múltipla (v2.0)
+
+## 🎉 Versões e Melhorias
+
+### v1.0 - Refatoração Inicial
+- Arquitetura modular com Service Layer
+- 5 telas funcionais completas
+- Todos os recursos principais implementados
+
+### v2.0 - Sistema de Cache
+- `ContactsCacheService` singleton
+- Parsing flexível de timestamps (int/String)
+- Eliminação de carregamentos redundantes
+- Botões "Selecionar Todos" / "Desmarcar Todos"
+- Sem auto-loading no startup
+
+### v2.1 - Validação de Telefones Brasileiros
+- Nova tela `InvalidPhonesScreen`
+- Validação completa de DDDs (todos os estados)
+- Identificação e explicação de problemas
+- Exclusão em massa de telefones inválidos
+- Separação clara: tela de formatação lista apenas válidos, tela de inválidos lista apenas inválidos
+
+### v2.2 - Melhorias UX na Formatação
+- Checkbox movido para lado esquerdo (consistência com outras telas)
+- Filtro inteligente: apenas telefones válidos aparecem na formatação
+- Telefones inválidos redirecionados para tela específica
 
 O código está pronto para uso e fácil de manter/expandir no futuro.

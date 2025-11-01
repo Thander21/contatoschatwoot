@@ -1,9 +1,7 @@
-import 'package:logging/logging.dart';
 import '../models/contact.dart';
 
 /// Serviço para detecção e gerenciamento de contatos duplicados
 class DuplicatesService {
-  final _logger = Logger('DuplicatesService');
 
   /// Agrupa contatos duplicados por telefone normalizado
   Map<String, List<Contact>> findDuplicateGroups(List<Contact> contacts) {

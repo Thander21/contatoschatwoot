@@ -32,14 +32,35 @@ class Contact {
       company: json['company']?.toString() ??
                json['custom_attributes']?['company']?.toString(),
       createdAt: json['created_at'] != null
-          ? DateTime.tryParse(json['created_at'])
+          ? _parseDateTime(json['created_at'])
           : null,
       updatedAt: json['updated_at'] != null
-          ? DateTime.tryParse(json['updated_at'])
+          ? _parseDateTime(json['updated_at'])
           : null,
-      customAttributes: json['custom_attributes'] as Map<String, dynamic>?,
-      additionalAttributes: json['additional_attributes'] as Map<String, dynamic>?,
+      customAttributes: json['custom_attributes'] != null
+          ? Map<String, dynamic>.from(json['custom_attributes'])
+          : null,
+      additionalAttributes: json['additional_attributes'] != null
+          ? Map<String, dynamic>.from(json['additional_attributes'])
+          : null,
     );
+  }
+
+  /// Helper para converter int (timestamp) ou String para DateTime
+  static DateTime? _parseDateTime(dynamic value) {
+    if (value == null) return null;
+
+    // Se for int, trata como timestamp Unix (segundos)
+    if (value is int) {
+      return DateTime.fromMillisecondsSinceEpoch(value * 1000);
+    }
+
+    // Se for String, tenta fazer parse
+    if (value is String) {
+      return DateTime.tryParse(value);
+    }
+
+    return null;
   }
 
   /// Converte Contact para JSON para enviar à API

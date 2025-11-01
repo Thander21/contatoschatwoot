@@ -21,15 +21,18 @@ class _CompanyManagementScreenState extends State<CompanyManagementScreen> {
   List<Contact> _problemContacts = [];
   final Set<int> _selectedIds = {};
   final Map<int, String> _companySuggestions = {};
-  bool _isLoading = true;
+  bool _isLoading = false;
   bool _isProcessing = false;
-  String _status = 'Carregando...';
+  String _status = 'Carregue os contatos primeiro no Dashboard';
   String _filterType = 'todos';
 
   @override
   void initState() {
     super.initState();
-    _loadContacts();
+    // Só carrega se já tiver cache
+    if (_cacheService.isLoaded && _cacheService.count > 0) {
+      _loadContacts();
+    }
   }
 
   Future<void> _loadContacts() async {
@@ -40,7 +43,14 @@ class _CompanyManagementScreenState extends State<CompanyManagementScreen> {
 
     try {
       // Usa o cache
-      final allContacts = await _cacheService.getContacts();
+      final allContacts = await _cacheService.getContacts(
+        onStatusUpdate: (status) {
+          if (mounted) setState(() => _status = status);
+        },
+      );
+
+      if (mounted) setState(() => _status = 'Analisando empresas...');
+
       final withoutCompany = _companyService.getContactsWithoutCompany(allContacts);
       final withCompanyInName = _companyService.getContactsWithCompanyInName(allContacts);
 
@@ -223,16 +233,61 @@ class _CompanyManagementScreenState extends State<CompanyManagementScreen> {
           ),
         ],
       ),
-      body: Column(
-        children: [
+      body: SafeArea(
+        child: Column(
+          children: [
           _buildFilterChips(),
           Padding(
             padding: const EdgeInsets.all(16.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Column(
               children: [
-                Text(_status, style: const TextStyle(fontSize: 12)),
-                Text('${filtered.length} itens | ${_selectedIds.length} selecionados'),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(child: Text(_status, style: const TextStyle(fontSize: 12))),
+                    Text('${filtered.length} itens | ${_selectedIds.length} selecionados'),
+                  ],
+                ),
+                if (filtered.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: _isProcessing
+                            ? null
+                            : () {
+                                setState(() {
+                                  _selectedIds.clear();
+                                  for (var contact in filtered) {
+                                    if (contact.id != null) {
+                                      _selectedIds.add(contact.id!);
+                                    }
+                                  }
+                                });
+                              },
+                        icon: const Icon(Icons.check_box, size: 18),
+                        label: const Text('Selecionar Todos'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      OutlinedButton.icon(
+                        onPressed: _isProcessing || _selectedIds.isEmpty
+                            ? null
+                            : () {
+                                setState(() => _selectedIds.clear());
+                              },
+                        icon: const Icon(Icons.check_box_outline_blank, size: 18),
+                        label: const Text('Desmarcar Todos'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
@@ -281,6 +336,7 @@ class _CompanyManagementScreenState extends State<CompanyManagementScreen> {
                           ),
           ),
         ],
+        ),
       ),
       floatingActionButton: _selectedIds.isEmpty
           ? null

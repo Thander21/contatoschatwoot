@@ -3,9 +3,6 @@ import 'package:logging/logging.dart';
 import '../models/contact.dart';
 import '../services/contacts_cache_service.dart';
 import '../services/contacts_service.dart';
-import '../services/phone_formatter_service.dart';
-import '../services/company_service.dart';
-import '../services/duplicates_service.dart';
 import '../services/backup_service.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -22,17 +19,62 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final _backupService = BackupService();
 
   List<Contact> _contacts = [];
-  bool _isLoading = true;
-  String _status = 'Carregando contatos...';
+  bool _isLoading = false;
+  String _status = 'Clique em ⟳ para carregar os contatos da API';
   ContactsStatistics? _stats;
 
   @override
   void initState() {
     super.initState();
-    _loadData();
+    // Não carrega automaticamente, aguarda usuário clicar no botão refresh
 
     // Adiciona listener para atualizar quando o cache mudar
     _cacheService.addListener(_onCacheUpdated);
+
+    // Verifica se já tem cache carregado
+    if (_cacheService.isLoaded) {
+      _loadDataFromCache();
+    }
+  }
+
+  Future<void> _loadDataFromCache() async {
+    setState(() {
+      _isLoading = true;
+      _status = 'Carregando do cache...';
+    });
+
+    try {
+      final contacts = _cacheService.count > 0
+          ? await _cacheService.getContacts()
+          : <Contact>[];
+
+      if (contacts.isNotEmpty) {
+        final stats = await _contactsService.getStatistics(contacts);
+
+        if (mounted) {
+          setState(() {
+            _contacts = contacts;
+            _stats = stats;
+            _status = '${contacts.length} contatos carregados do cache';
+            _isLoading = false;
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _status = 'Clique em ⟳ para carregar os contatos da API';
+            _isLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _status = 'Clique em ⟳ para carregar os contatos da API';
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -57,16 +99,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     try {
       // Usa o cache - só carrega da API se necessário
-      final contacts = await _cacheService.getContacts();
+      final contacts = await _cacheService.getContacts(
+        onStatusUpdate: (status) {
+          if (mounted) {
+            setState(() => _status = status);
+          }
+        },
+      );
+
+      if (mounted) {
+        setState(() => _status = 'Calculando estatísticas...');
+      }
 
       final stats = await _contactsService.getStatistics(contacts);
 
-      setState(() {
-        _contacts = contacts;
-        _stats = stats;
-        _status = '${contacts.length} contatos carregados';
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _contacts = contacts;
+          _stats = stats;
+          _status = '${contacts.length} contatos carregados';
+          _isLoading = false;
+        });
+      }
     } catch (e) {
       _logger.severe('Erro ao carregar dados', e);
       if (mounted) {
@@ -125,7 +179,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
             onPressed: _isLoading
                 ? null
                 : () async {
-                    await _cacheService.reload();
+                    setState(() {
+                      _isLoading = true;
+                      _status = 'Recarregando da API...';
+                    });
+                    await _cacheService.reload(
+                      onStatusUpdate: (status) {
+                        if (mounted) setState(() => _status = status);
+                      },
+                    );
                     _loadData();
                   },
             tooltip: 'Recarregar da API',
@@ -257,22 +319,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 _stats!.invalidPhone,
                 Icons.phone_disabled,
                 Colors.purple,
-                onTap: () => Navigator.pushNamed(context, '/phone-format'),
+                onTap: () => Navigator.pushNamed(context, '/invalid-phones'),
               ),
-              if (_stats!.invalidEmail > 0)
-                _buildIssueItem(
-                  'Email inválido',
-                  _stats!.invalidEmail,
-                  Icons.email,
-                  Colors.brown,
-                ),
-              if (_stats!.withoutName > 0)
-                _buildIssueItem(
-                  'Sem nome',
-                  _stats!.withoutName,
-                  Icons.person_off,
-                  Colors.pink,
-                ),
+              _buildIssueItem(
+                'Email inválido',
+                _stats!.invalidEmail,
+                Icons.email,
+                Colors.brown,
+              ),
+              _buildIssueItem(
+                'Sem nome',
+                _stats!.withoutName,
+                Icons.person_off,
+                Colors.pink,
+              ),
             ],
           ],
         ),
@@ -331,6 +391,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             const SizedBox(height: 12),
             _buildActionButton(
+              'Telefones Inválidos',
+              'Excluir contatos com telefones inválidos',
+              Icons.phone_disabled,
+              Colors.red,
+              onPressed: () => Navigator.pushNamed(context, '/invalid-phones'),
+            ),
+            const SizedBox(height: 12),
+            _buildActionButton(
               'Ver Todos os Contatos',
               'Lista completa com busca',
               Icons.list,
@@ -385,41 +453,56 @@ class _DashboardScreenState extends State<DashboardScreen> {
     Color color, {
     VoidCallback? onTap,
   }) {
-    if (count == 0) return const SizedBox.shrink();
+    final isZero = count == 0;
 
     return InkWell(
-      onTap: onTap,
-      child: Padding(
+      onTap: isZero ? null : onTap,
+      child: Container(
         padding: const EdgeInsets.symmetric(vertical: 8.0),
-        child: Row(
-          children: [
-            Icon(icon, color: color, size: 20),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                label,
-                style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
+        decoration: BoxDecoration(
+          color: isZero ? Colors.grey.shade100 : null,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8.0),
+          child: Row(
+            children: [
+              Icon(
+                icon,
+                color: isZero ? Colors.grey.shade400 : color,
+                size: 20,
               ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              decoration: BoxDecoration(
-                color: color,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                count.toString(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: isZero ? Colors.grey.shade500 : Colors.grey.shade700,
+                    decoration: isZero ? TextDecoration.lineThrough : null,
+                  ),
                 ),
               ),
-            ),
-            if (onTap != null) ...[
-              const SizedBox(width: 8),
-              const Icon(Icons.arrow_forward_ios, size: 16),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                decoration: BoxDecoration(
+                  color: isZero ? Colors.grey.shade400 : color,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  count.toString(),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              if (onTap != null && !isZero) ...[
+                const SizedBox(width: 8),
+                Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey.shade600),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );

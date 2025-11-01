@@ -4,6 +4,7 @@ import 'screens/contacts_list_screen.dart';
 import 'screens/phone_format_screen.dart';
 import 'screens/duplicate_contacts_screen.dart';
 import 'screens/company_management_screen.dart';
+import 'screens/invalid_phones_screen.dart';
 
 class ContactManagementRoutes {
   // Rotas principais
@@ -12,6 +13,7 @@ class ContactManagementRoutes {
   static const String phoneFormat = '/phone-format';
   static const String duplicates = '/duplicates';
   static const String companyManagement = '/company-management';
+  static const String invalidPhones = '/invalid-phones';
 
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
@@ -25,6 +27,8 @@ class ContactManagementRoutes {
         return MaterialPageRoute(builder: (_) => const DuplicateContactsScreen());
       case companyManagement:
         return MaterialPageRoute(builder: (_) => const CompanyManagementScreen());
+      case invalidPhones:
+        return MaterialPageRoute(builder: (_) => const InvalidPhonesScreen());
       default:
         return MaterialPageRoute(
           builder: (_) => Scaffold(
