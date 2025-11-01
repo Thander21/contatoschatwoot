@@ -1,295 +1,652 @@
-# Gerenciador de Contatos Chatwoot
+# 📞 Chatwoot Contact Manager
 
-Aplicação Flutter Desktop para gerenciamento completo de contatos da plataforma Chatwoot, com funcionalidades de backup, formatação, remoção de duplicados, gerenciamento de empresas e validação de telefones brasileiros.
+<div align="center">
 
-## 📋 Funcionalidades
+![Flutter](https://img.shields.io/badge/Flutter-3.5.3+-02569B?logo=flutter&logoColor=white)
+![Dart](https://img.shields.io/badge/Dart-3.5.3+-0175C2?logo=dart&logoColor=white)
+![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey)
+![License](https://img.shields.io/badge/License-MIT-green)
+![Version](https://img.shields.io/badge/Version-2.2-blue)
 
-### ✅ Implementadas
+**A professional desktop application for comprehensive Chatwoot contact management**
 
-- **Dashboard com Estatísticas**: Visão geral de todos os contatos e problemas detectados
-- **Sistema de Cache Inteligente**:
-  - Carrega contatos uma vez e mantém em memória
-  - Atualização automática entre telas
-  - Reload manual apenas quando necessário
-  - Elimina carregamentos desnecessários da API
-- **Backup/Export para Excel**: Exporta todos os contatos para planilha Excel com timestamp
-- **Formatação de Telefones em Lote**:
-  - Adiciona código do país (+55)
-  - Corrige formato antigo (remove 0 inicial)
-  - Adiciona DDD padrão para números incompletos
-  - Lista apenas telefones válidos (exclui inválidos que vão para tela específica)
-  - Checkbox no lado esquerdo (padrão com outras telas)
-  - Permite seleção individual ou em lote com "Selecionar Todos"
-- **Validação e Limpeza de Telefones Inválidos**:
-  - Valida números de telefone brasileiros (formato +55 + DDD + 8-9 dígitos)
-  - Verifica DDDs válidos de todos os estados brasileiros
-  - Identifica e explica motivos de invalidação (DDD inexistente, muito curto/longo, etc.)
-  - Permite exclusão em massa de contatos com telefones inválidos
-  - Interface com busca e seleção múltipla
-- **Gerenciamento de Duplicados**:
-  - Detecta contatos com telefones duplicados
-  - Mantém o contato mais recente e completo
-  - Permite seleção de quais grupos remover
-  - Botões "Selecionar Todos" e "Desmarcar Todos"
-- **Gerenciamento de Empresas**:
-  - Extrai empresa do nome (padrão "Nome - Empresa")
-  - Sugere empresas baseado no domínio do email
-  - Permite edição manual das empresas
-  - Preenche campo company nos contatos
-  - Seleção em lote facilitada
-- **Listagem Completa**: Lista todos os contatos com busca e filtros
+[Features](#-features) • [Installation](#-installation) • [Usage](#-usage) • [Documentation](#-documentation) • [Contributing](#-contributing)
 
-## 🏗️ Arquitetura
+</div>
 
-### Estrutura de Pastas
+---
 
-```
-lib/
-├── main.dart                           # Ponto de entrada
-├── contact_management_routes.dart      # Rotas da aplicação
-├── models/
-│   └── contact.dart                    # Modelo de dados Contact com parsing flexível
-├── services/
-│   ├── api_config.dart                 # Configurações da API
-│   ├── contacts_service.dart           # Serviço de comunicação com API
-│   ├── contacts_cache_service.dart     # Serviço de cache em memória (singleton)
-│   ├── backup_service.dart             # Serviço de backup/export
-│   ├── phone_formatter_service.dart    # Serviço de formatação e validação de telefone
-│   ├── company_service.dart            # Serviço de gerenciamento de empresas
-│   └── duplicates_service.dart         # Serviço de detecção de duplicados
-└── screens/
-    ├── dashboard_screen.dart           # Dashboard principal
-    ├── contacts_list_screen.dart       # Lista completa de contatos
-    ├── phone_format_screen.dart        # Tela de formatação de telefones
-    ├── duplicate_contacts_screen.dart  # Tela de duplicados
-    ├── company_management_screen.dart  # Tela de gerenciamento de empresas
-    └── invalid_phones_screen.dart      # Tela de telefones inválidos (NEW)
-```
+## 🎯 About
 
-### Padrões Utilizados
+Chatwoot Contact Manager is a powerful Flutter desktop application designed to help Chatwoot users maintain clean, organized contact databases. It provides intelligent tools for data validation, deduplication, formatting, and bulk operations - all with a focus on Brazilian phone number standards.
 
-- **Service Layer**: Toda lógica de negócio está em serviços separados
-- **Singleton Pattern**: Cache centralizado compartilhado entre todas as telas
-- **Observer Pattern**: Listeners notificam mudanças no cache para atualização automática
-- **Model-First**: Modelo de dados tipado para contatos com parsing flexível (int/String)
-- **Stateful Screens**: Cada tela gerencia seu próprio estado
-- **Async/Await**: Operações assíncronas para chamadas de API
-- **Cache-First**: Carrega da API apenas quando necessário, prioriza cache em memória
+### Why This App?
 
-## 🚀 Como Usar
+- **🔒 Secure**: No hardcoded credentials - session-based authentication
+- **🚀 Fast**: Smart caching eliminates redundant API calls
+- **🇧🇷 Brazilian-Focused**: Complete validation for Brazilian phone numbers (81 DDDs)
+- **🔄 Intelligent**: Smart duplicate detection with completeness scoring
+- **📊 Analytics**: Real-time dashboard with data quality metrics
+- **💾 Safe**: Excel backup before any destructive operations
 
-### Pré-requisitos
+---
 
-- Flutter SDK 3.5.3 ou superior
-- Dart SDK incluído no Flutter
-- Windows/Linux/macOS (aplicação desktop)
+## ✨ Features
 
-### Instalação
+### 🏠 Dashboard & Analytics
+- Real-time statistics of your contact database
+- Data quality metrics at a glance
+- Quick access to all management tools
+- No auto-loading - instant startup
 
-1. Clone o repositório:
+### 📱 Phone Number Management
+- **Format Correction**: Add country codes (+55), remove old formats, normalize DDDs
+- **Brazilian Validation**: Validates against all 81 Brazilian state DDDs
+- **Invalid Detection**: Identifies and explains invalid phone numbers
+- **Batch Operations**: Process hundreds of contacts at once
+
+### 👥 Duplicate Management
+- **Smart Detection**: Groups contacts by normalized phone numbers
+- **Intelligent Scoring**: Keeps the most complete and recent contact
+- **Safe Merging**: Automatically preserves best information from duplicates
+- **Bulk Processing**: Select and process multiple duplicate groups
+
+### 🏢 Company Management
+- **Pattern Detection**: Recognizes 4 company name patterns
+- **Auto-Suggestions**: Extracts company from email domains
+- **Manual Editing**: Full control over company assignments
+- **Smart Filtering**: 3-way filter (all, suggested, in-name)
+
+### 💾 Backup & Export
+- **Excel Export**: Complete contact data with timestamps
+- **Automatic Naming**: Timestamped files prevent overwrites
+- **Full Data**: ID, Name, Email, Phone, Company, dates
+
+### 🔐 Security & Privacy
+- **No Hardcoded Credentials**: You provide your own API credentials
+- **Session-Only Storage**: Credentials stored in memory, cleared on exit
+- **Secure Dialog**: Password-style token input with visibility toggle
+- **Auto-Cleanup**: Credentials automatically wiped when app closes
+
+---
+
+## 📋 Requirements
+
+### System Requirements
+- **OS**: Windows 10+, macOS 10.14+, or Ubuntu 20.04+
+- **Memory**: 4GB RAM minimum (8GB recommended)
+- **Storage**: 200MB free space
+
+### Software Requirements
+- [Flutter SDK](https://flutter.dev/docs/get-started/install) 3.5.3 or higher
+- [Dart SDK](https://dart.dev/get-dart) (included with Flutter)
+- Platform-specific build tools:
+  - **Windows**: Visual Studio 2022 with C++ Desktop Development
+  - **macOS**: Xcode 13 or higher
+  - **Linux**: GCC, CMake, GTK development libraries
+
+### Chatwoot Requirements
+- Active Chatwoot account (self-hosted or cloud)
+- API Access Token (get from: Settings → Profile → API Access)
+- Account ID (usually `1` for single-account instances)
+
+---
+
+## 🚀 Installation
+
+### 1. Clone the Repository
+
 ```bash
-git clone <url-do-repo>
+git clone https://github.com/yourusername/contatoschatwoot.git
 cd contatoschatwoot
 ```
 
-2. Instale as dependências:
+### 2. Install Dependencies
+
 ```bash
 flutter pub get
 ```
 
-3. Execute a aplicação:
+### 3. Verify Installation
+
 ```bash
-flutter run -d windows  # ou linux/macos
+flutter doctor
 ```
 
-### Configuração da API
+Ensure all checkmarks are green for your target platform.
 
-⚠️ **IMPORTANTE**: O token da API está hardcoded. Para produção, mova para arquivo `.env` ou configuração segura.
+### 4. Run the Application
 
-Edite `lib/services/api_config.dart`:
+```bash
+# Windows
+flutter run -d windows
+
+# macOS
+flutter run -d macos
+
+# Linux
+flutter run -d linux
+```
+
+---
+
+## 🔧 Configuration
+
+### First-Time Setup
+
+1. **Launch the application**
+   ```bash
+   flutter run -d windows  # or macos/linux
+   ```
+
+2. **Click the refresh button (⟳)** on the dashboard
+
+3. **Enter your Chatwoot credentials** when prompted:
+   - **API URL**: Your Chatwoot instance URL (e.g., `https://app.chatwoot.com` or `https://chat.yourdomain.com`)
+   - **API Token**: Your personal access token from Chatwoot
+
+4. **Start managing contacts!**
+
+### Getting Your API Token
+
+1. Log into your Chatwoot account
+2. Navigate to **Settings** → **Profile**
+3. Scroll to **API Access** section
+4. Copy your **Access Token**
+
+> **🔒 Security Note**: Your credentials are stored only in memory during the session. When you close the app, they are automatically cleared. You'll need to re-enter them next time you launch.
+
+---
+
+## 📖 Usage
+
+### Basic Workflow
+
+```
+1. Launch App → Dashboard appears (empty, no auto-load)
+2. Click ⟳ Refresh → Enter credentials if first time
+3. View Statistics → Identify data quality issues
+4. Select Feature → Choose the operation you need
+5. Batch Select → Check contacts to process
+6. Execute → Process with progress feedback
+7. Review Results → Check success/error counts
+```
+
+### Feature Guides
+
+#### 📱 Format Phone Numbers
+
+**Use Case**: Add country codes, fix old formats, normalize Brazilian numbers
+
+1. Click **"Corrigir Telefones"** from dashboard
+2. Review contacts with formatting issues
+3. Use filters to select specific problem types:
+   - Without +55
+   - Old format (leading 0)
+   - Missing DDD
+   - Missing 9th digit
+4. Select contacts (individually or "Selecionar Todos")
+5. Click **"Formatar Selecionados"**
+6. Confirm and wait for completion
+
+> **Note**: Only valid phone numbers appear here. Invalid ones go to the separate "Invalid Phones" screen.
+
+#### 🗑️ Remove Invalid Phones
+
+**Use Case**: Clean up contacts with invalid Brazilian phone numbers
+
+1. Click **"Telefones Inválidos"** from dashboard
+2. Review contacts with invalid phones
+3. See **specific reason** for each invalid number:
+   - Invalid DDD (not in 81 valid codes)
+   - Too short (< 10 digits)
+   - Too long (> 11 digits)
+   - Empty phone
+4. Select contacts to delete
+5. Click **"Excluir Selecionados"**
+6. **Confirm** (this is irreversible!)
+
+> **⚠️ Warning**: Make a backup first! This operation cannot be undone.
+
+#### 👥 Remove Duplicates
+
+**Use Case**: Merge contacts with duplicate phone numbers
+
+1. Click **"Limpar Duplicados"** from dashboard
+2. Review duplicate groups (grouped by phone)
+3. See which contact will be kept (⭐ marked)
+4. Select groups to process
+5. Click **"Remover Duplicados Selecionados"**
+6. System keeps the best contact automatically
+
+**How "Best" Contact is Chosen**:
+- ✅ Has country code (+55)
+- ✅ Most complete (name, email, company, phone)
+- ✅ Most recent update
+- ✅ Highest completeness score
+
+#### 🏢 Manage Companies
+
+**Use Case**: Extract or add company information to contacts
+
+1. Click **"Gerenciar Empresas"** from dashboard
+2. Choose filter:
+   - **Todos**: All without company
+   - **Com sugestão**: Auto-detected from email/name
+   - **Empresa no nome**: Has pattern like "Name - Company"
+3. Review suggestions or edit manually
+4. Select contacts to process
+5. Click **"Salvar Empresas"**
+
+**Supported Name Patterns**:
+- `João Silva - Acme Corp` → Extracts "Acme Corp"
+- `Maria (Tech Inc)` → Extracts "Tech Inc"
+- `Pedro @ Startup XYZ` → Extracts "Startup XYZ"
+- `Ana | Company Name` → Extracts "Company Name"
+
+**Email Domain Extraction**:
+- `contact@acmecorp.com` → Suggests "Acme Corp"
+- `user@gmail.com` → Ignored (generic provider)
+
+#### 💾 Create Backup
+
+**Use Case**: Export all contacts to Excel before operations
+
+1. Click **"Fazer Backup"** button (📦 icon)
+2. Wait for export to complete
+3. Find file in: `Documents/backup_contatos_[timestamp].xlsx`
+
+**Exported Data**:
+- Contact ID
+- Name
+- Email
+- Phone Number
+- Company
+- Created Date (DD/MM/YYYY HH:MM)
+- Updated Date (DD/MM/YYYY HH:MM)
+
+---
+
+## 🏗️ Architecture
+
+### Design Patterns
+
+- **Service Layer**: Business logic separated from UI
+- **Singleton**: Cache service shared across app
+- **Observer**: Automatic screen updates via listeners
+- **Factory**: Flexible JSON parsing for API responses
+- **Immutability**: Safe data updates with `copyWith()`
+
+### Project Structure
+
+```
+lib/
+├── main.dart                         # Entry point, lifecycle management
+├── contact_management_routes.dart    # Named routes
+├── models/
+│   └── contact.dart                  # Contact data model
+├── services/
+│   ├── credentials_service.dart      # Secure credential management
+│   ├── api_config.dart               # Dynamic API configuration
+│   ├── contacts_cache_service.dart   # Singleton cache with listeners
+│   ├── contacts_service.dart         # API client (CRUD, stats)
+│   ├── phone_formatter_service.dart  # Phone validation & formatting
+│   ├── company_service.dart          # Company extraction logic
+│   ├── duplicates_service.dart       # Duplicate detection & merging
+│   └── backup_service.dart           # Excel export
+└── screens/
+    ├── dashboard_screen.dart         # Main dashboard
+    ├── auth_dialog.dart              # Authentication UI
+    ├── contacts_list_screen.dart     # Full contact listing
+    ├── phone_format_screen.dart      # Phone correction
+    ├── invalid_phones_screen.dart    # Invalid phone detection
+    ├── duplicate_contacts_screen.dart# Deduplication
+    └── company_management_screen.dart# Company management
+```
+
+### Data Flow
+
+```
+User Action → Check Cache → API Call (if needed) → Update Cache → Notify Listeners → Update UI
+```
+
+### Technology Stack
+
+| Component | Technology |
+|-----------|------------|
+| Framework | Flutter 3.5.3+ |
+| Language | Dart 3.5.3+ |
+| HTTP Client | `http` ^1.1.0 |
+| Excel Export | `excel` ^4.0.6 |
+| File System | `path_provider` ^2.1.1 |
+| Window Manager | `window_manager` ^0.5.1 |
+| Logging | `logging` ^1.2.0 |
+| Date Format | `intl` ^0.20.2 |
+
+---
+
+## 🔐 Security & Privacy
+
+### What We Store
+
+**In Memory (During Session)**:
+- ✅ API URL
+- ✅ API Token
+- ✅ Cached contacts
+
+**On Disk (Never)**:
+- ❌ Credentials
+- ❌ API tokens
+- ❌ Cached contacts
+
+### How It Works
+
+1. **Credential Input**: Validated before storage
+2. **Session Storage**: Kept in RAM only
+3. **Auto-Cleanup**: Cleared when app closes/pauses
+4. **No Persistence**: Fresh credentials required each session
+
+### Security Features
+
+- 🔒 **No Hardcoded Secrets**: All credentials provided by user
+- 🔒 **Memory-Only Storage**: Never written to disk
+- 🔒 **Lifecycle Observers**: Auto-wipe on app exit/pause
+- 🔒 **Input Validation**: URL and token verified
+- 🔒 **Visibility Toggle**: Token hidden by default
+- 🔒 **Safe for Version Control**: No secrets in code
+
+### .gitignore Protection
+
+The repository includes protections against accidentally committing:
+- `.env` files
+- Credential JSON files
+- Backup Excel files with contact data
+
+---
+
+## 🇧🇷 Brazilian Phone Validation
+
+### Supported DDDs (81 Total)
+
+The app validates against all official Brazilian area codes:
+
+| Region | DDDs |
+|--------|------|
+| **São Paulo** | 11, 12, 13, 14, 15, 16, 17, 18, 19 |
+| **Rio de Janeiro** | 21, 22, 24 |
+| **Espírito Santo** | 27, 28 |
+| **Minas Gerais** | 31, 32, 33, 34, 35, 37, 38 |
+| **Paraná** | 41, 42, 43, 44, 45, 46 |
+| **Santa Catarina** | 47, 48, 49 |
+| **Rio Grande do Sul** | 51, 53, 54, 55 |
+| **Distrito Federal** | 61 |
+| **Goiás** | 62, 64 |
+| **Tocantins** | 63 |
+| **Mato Grosso** | 65, 66 |
+| **Mato Grosso do Sul** | 67 |
+| **Acre** | 68 |
+| **Rondônia** | 69 |
+| **Bahia** | 71, 73, 74, 75, 77 |
+| **Sergipe** | 79 |
+| **Pernambuco** | 81, 87 |
+| **Alagoas** | 82 |
+| **Paraíba** | 83 |
+| **Rio Grande do Norte** | 84 |
+| **Ceará** | 85, 88 |
+| **Piauí** | 86, 89 |
+| **Pará** | 91, 93, 94 |
+| **Amazonas** | 92, 97 |
+| **Roraima** | 95 |
+| **Amapá** | 96 |
+| **Maranhão** | 98, 99 |
+
+### Validation Rules
+
+**Valid Format**: `+55 [DDD] [8-9 digits]`
+
+Examples:
+- ✅ `+5511987654321` (São Paulo mobile)
+- ✅ `+552134567890` (Rio de Janeiro landline)
+- ❌ `5511987654321` (missing +)
+- ❌ `+5599987654321` (invalid DDD 99 for mobile)
+- ❌ `+55119876543` (too short)
+
+---
+
+## 📊 Statistics & Metrics
+
+The dashboard tracks these data quality metrics:
+
+| Metric | Description |
+|--------|-------------|
+| **Total Contacts** | Total count in database |
+| **Without Country Code** | Missing +55 prefix |
+| **Duplicate Groups** | Contacts sharing phone numbers |
+| **Without Company** | Empty company field |
+| **Invalid Phone** | Wrong DDD, length, or format |
+| **Invalid Email** | Failed regex validation |
+| **Without Name** | Empty name field |
+
+---
+
+## 🛠️ Development
+
+### Building from Source
+
+```bash
+# Clone
+git clone https://github.com/yourusername/contatoschatwoot.git
+cd contatoschatwoot
+
+# Install dependencies
+flutter pub get
+
+# Run tests (when available)
+flutter test
+
+# Build for production
+flutter build windows --release  # or macos/linux
+
+# Output location
+build/windows/runner/Release/contatoschatwoot.exe
+```
+
+### Code Analysis
+
+```bash
+# Check for issues
+flutter analyze
+
+# Format code
+dart format lib/
+```
+
+### Logging
+
+The app uses structured logging via `package:logging`. All logs appear in the console during development:
+
 ```dart
-static const String baseUrl = 'https://seu-chatwoot.com.br/api/v1';
-static const String apiToken = 'SEU_TOKEN_AQUI';
-static const String accountId = '1';
+Logger.root.level = Level.ALL;  // See all logs
+Logger.root.level = Level.INFO;  // Production level
 ```
 
-## 📱 Guia de Uso
+---
 
-### Dashboard
+## 🤝 Contributing
 
-A tela inicial mostra:
-- Total de contatos carregados
-- Quantidade de problemas por categoria
-- Botões de ação rápida para cada funcionalidade
+Contributions are welcome! Please follow these guidelines:
 
-### Fazer Backup
+### How to Contribute
 
-1. No dashboard, clique em "Fazer Backup Completo"
-2. O arquivo Excel será salvo em `Documents/backup_contatos_[timestamp].xlsx`
-3. O arquivo contém: ID, Nome, Email, Telefone, Empresa, datas
+1. **Fork** the repository
+2. **Create** a feature branch (`git checkout -b feature/amazing-feature`)
+3. **Commit** your changes (`git commit -m 'Add amazing feature'`)
+4. **Push** to the branch (`git push origin feature/amazing-feature`)
+5. **Open** a Pull Request
 
-### Corrigir Telefones
+### Contribution Guidelines
 
-1. Acesse "Corrigir Telefones" no dashboard
-2. **Apenas telefones VÁLIDOS** são listados (telefones inválidos vão para tela específica)
-3. Filtre por tipo de problema (Sem +55, Formato antigo, etc)
-4. Selecione os contatos usando checkbox à esquerda (individual ou "Selecionar Todos")
-5. Clique em "Formatar" para aplicar correções
-6. Aguarde a conclusão do processo
-7. Telefones com DDD inválido ou formato incorreto não aparecem aqui
+- Follow Dart style guide
+- Add tests for new features
+- Update documentation
+- Keep commits atomic and descriptive
+- Ensure `flutter analyze` passes
 
-### Remover Duplicados
+### Areas for Improvement
 
-1. Acesse "Limpar Duplicados"
-2. Visualize grupos de contatos com mesmo telefone
-3. Selecione os grupos que deseja processar
-4. O sistema manterá automaticamente o contato mais recente
-5. Confirme a exclusão
+- [ ] Add unit tests for services
+- [ ] Implement undo/redo functionality
+- [ ] Add multi-language support (i18n)
+- [ ] Create mobile version (iOS/Android)
+- [ ] Add dark mode toggle
+- [ ] Implement persistent cache (SQLite)
+- [ ] Add custom validation rules
+- [ ] Create comprehensive test suite
 
-### Gerenciar Empresas
+---
 
-1. Acesse "Gerenciar Empresas"
-2. Filtre por:
-   - Todos: Contatos sem empresa
-   - Com sugestão: Sistema sugeriu empresa baseado em email
-   - Empresa no nome: Tem padrão "Nome - Empresa"
-3. Edite manualmente a empresa de cada contato
-4. Use "Selecionar Todos" para processar em lote
-5. As empresas serão extraídas e salvas no campo `company`
+## 📝 Changelog
 
-### Limpar Telefones Inválidos (NOVO)
+### Version 2.2 (Current) - Secure Authentication
+- 🔐 Removed all hardcoded credentials
+- 🖥️ Added authentication dialog with validation
+- 👁️ Token field with visibility toggle
+- 💾 Session-based credential storage
+- 🔒 Auto-cleanup on app exit
+- 📝 Updated documentation
 
-1. Acesse "Telefones Inválidos" no dashboard
-2. O sistema mostrará contatos com telefones que não seguem o padrão brasileiro:
-   - DDDs inexistentes
-   - Números muito curtos (menos de 10 dígitos)
-   - Números muito longos (mais de 11 dígitos)
-3. Use a busca para filtrar contatos específicos
-4. Selecione contatos individuais ou use "Selecionar Todos"
-5. Cada contato mostra o motivo da invalidação
-6. Confirme a exclusão dos contatos selecionados
-7. **ATENÇÃO**: Esta ação é irreversível - faça backup antes!
+### Version 2.1 - Brazilian Phone Validation
+- 📱 Added invalid phones screen
+- ✅ Validation for 81 Brazilian DDDs
+- 📊 Detailed invalidation reasons
+- 🗑️ Bulk deletion with confirmation
 
-## 🔧 Manutenção
+### Version 2.0 - Cache System
+- ⚡ Singleton cache service
+- 🔄 Observer pattern listeners
+- 📈 Eliminated redundant API calls
+- 🎯 No auto-loading on startup
 
-### Adicionar Nova Funcionalidade
+### Version 1.0 - Initial Release
+- 📊 Dashboard with statistics
+- 📱 Phone formatting
+- 👥 Duplicate detection
+- 🏢 Company management
+- 💾 Excel export
 
-1. Crie o serviço em `lib/services/`
-2. Crie a tela em `lib/screens/`
-3. Adicione a rota em `contact_management_routes.dart`
-4. Adicione botão no dashboard
+---
 
-### Modificar Padrões de Empresa
+## ⚠️ Known Limitations
 
-Edite `lib/services/company_service.dart`:
-```dart
-static final _companyPatterns = [
-  RegExp(r'\s+-\s+(.+)$'),    // "Nome - Empresa"
-  RegExp(r'\s+\((.+)\)$'),    // "Nome (Empresa)"
-  // Adicione novos padrões aqui
-];
+1. **Credentials**: Must re-enter each session (security by design)
+2. **Cache**: Lost on app restart (use backup for persistence)
+3. **Undo**: No transaction rollback (make backups!)
+4. **Account ID**: Hardcoded to '1' (most installations)
+5. **Network**: Requires internet for API operations
+
+---
+
+## 🐛 Troubleshooting
+
+### App won't start
+- Ensure Flutter SDK is installed: `flutter doctor`
+- Check platform-specific build tools
+- Try: `flutter clean && flutter pub get`
+
+### Can't connect to API
+- Verify URL format: `https://your-domain.com` (no /api/v1)
+- Check token is correct (from Chatwoot Settings → Profile)
+- Ensure Chatwoot instance is accessible
+- Check firewall/network settings
+
+### Credentials keep asking
+- Expected behavior (security feature)
+- Credentials cleared on each app restart
+- Consider this a feature, not a bug
+
+### Export fails
+- Check write permissions to Documents folder
+- Ensure sufficient disk space
+- Verify no file is already open in Excel
+
+### Phone validation issues
+- Only Brazilian numbers supported
+- Ensure DDD is valid (check table above)
+- Format must be +55 [DDD] [8-9 digits]
+
+---
+
+## 📄 License
+
+This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
+
+```
+MIT License
+
+Copyright (c) 2024 Chatwoot Contact Manager Contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 ```
 
-### Alterar DDD Padrão
+---
 
-Edite `lib/services/phone_formatter_service.dart`:
-```dart
-String formatPhoneNumber(String phone, {String defaultDDD = '11'}) {
-  // Altere '11' para o DDD desejado
-}
-```
+## 🙏 Acknowledgments
 
-## 📊 Estatísticas e Logs
+- **Flutter Team** - For the amazing framework
+- **Chatwoot** - For the excellent open-source CRM platform
+- **Brazilian Developers** - For feedback on DDD validation
+- **Open Source Community** - For inspiration and support
 
-A aplicação usa `package:logging` para logs detalhados:
-- Todas as operações são registradas
-- Erros incluem stack trace completo
-- Logs aparecem no console durante desenvolvimento
+---
 
-## ⚠️ Limitações Conhecidas
+## 📞 Support & Contact
 
-1. Token da API hardcoded (precisa ser movido para configuração segura)
-2. Sem autenticação de usuário
-3. Sem histórico de operações (undo/redo)
-4. Sem validação de regras de negócio customizadas
-5. Cache apenas em memória (perdido ao fechar o app)
+### Get Help
 
-## 🆕 Melhorias Recentes
+- 📖 [Read the Documentation](#-documentation)
+- 🐛 [Report a Bug](https://github.com/yourusername/contatoschatwoot/issues/new?template=bug_report.md)
+- 💡 [Request a Feature](https://github.com/yourusername/contatoschatwoot/issues/new?template=feature_request.md)
+- 💬 [Chatwoot Community](https://chatwoot.com/community)
 
-### Sistema de Cache (v2.0)
-- Implementado `ContactsCacheService` singleton
-- Elimina múltiplos carregamentos da API
-- Atualização automática entre telas via listeners
-- Carregamento manual controlado pelo usuário
-- Parsing flexível de timestamps (int ou String)
+### Resources
 
-### Validação de Telefones Brasileiros (v2.1)
-- Nova tela "Telefones Inválidos"
-- Validação completa de DDDs brasileiros (todos os estados)
-- Explicação detalhada do motivo de invalidação
-- Exclusão em massa com confirmação
-- Interface com busca e seleção múltipla
+- [Chatwoot API Documentation](https://www.chatwoot.com/docs/product/channels/api/client-apis)
+- [Flutter Documentation](https://flutter.dev/docs)
+- [Dart Documentation](https://dart.dev/guides)
 
-### Melhorias de UX
-- Botões "Selecionar Todos" e "Desmarcar Todos" em todas as telas de seleção múltipla
-- Indicadores de progresso durante operações longas
-- Mensagens de status detalhadas
-- Sem auto-loading: app inicia instantaneamente
+---
 
-## 🔐 Segurança
+## ⭐ Show Your Support
 
-**ATENÇÃO**: Esta é uma aplicação de uso único/interno. Para produção:
+If this project helped you, please consider:
+- ⭐ Starring the repository
+- 🐛 Reporting bugs
+- 💡 Suggesting features
+- 🤝 Contributing code
+- 📢 Sharing with others
 
-1. ✅ Mova token para variável de ambiente
-2. ✅ Adicione autenticação de usuário
-3. ✅ Implemente rate limiting nas chamadas de API
-4. ✅ Valide todas as entradas de usuário
-5. ✅ Adicione logs de auditoria
+---
 
-## 📦 Dependências Principais
+<div align="center">
 
-```yaml
-dependencies:
-  flutter: sdk
-  http: ^1.1.0              # Chamadas HTTP
-  excel: ^4.0.6             # Exportação Excel
-  path_provider: ^2.1.1     # Acesso a diretórios
-  window_manager: ^0.5.1    # Gerenciamento de janela desktop
-  logging: ^1.2.0           # Sistema de logs
-  intl: ^0.20.2            # Formatação de datas
-```
+**Made with ❤️ using Flutter**
 
-## 🐛 Resolução de Problemas
+[⬆ Back to Top](#-chatwoot-contact-manager)
 
-### Erro ao carregar contatos
-- Verifique a URL da API em `api_config.dart`
-- Confirme que o token está correto
-- Verifique conexão com internet
-
-### Erro ao salvar backup
-- Verifique permissões de escrita em `Documents`
-- Confirme espaço em disco disponível
-
-### Contatos não estão sendo atualizados
-- Confirme que o ID do contato existe
-- Verifique logs para detalhes do erro
-- Teste a API diretamente (Postman/cURL)
-
-## 📝 Licença
-
-Este projeto é de uso interno. Todos os direitos reservados.
-
-## 👥 Contribuindo
-
-Para contribuir:
-1. Crie uma branch para sua feature
-2. Faça commit das mudanças
-3. Abra um Pull Request
-4. Aguarde revisão
-
-## 📞 Suporte
-
-Para dúvidas ou problemas:
-- Abra uma issue no repositório
-- Consulte a documentação da API Chatwoot
-- Verifique os logs da aplicação
+</div>

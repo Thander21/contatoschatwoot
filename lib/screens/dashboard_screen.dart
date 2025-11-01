@@ -4,6 +4,8 @@ import '../models/contact.dart';
 import '../services/contacts_cache_service.dart';
 import '../services/contacts_service.dart';
 import '../services/backup_service.dart';
+import '../services/api_config.dart';
+import 'auth_dialog.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -90,6 +92,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _loadData() async {
+    // Verifica se precisa configurar credenciais
+    if (!ApiConfig.hasCredentials) {
+      final shouldContinue = await _showAuthDialog();
+      if (!shouldContinue) return;
+    }
+
     setState(() {
       _isLoading = true;
       _status = _cacheService.isLoaded
@@ -130,6 +138,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
         });
       }
     }
+  }
+
+  Future<bool> _showAuthDialog() async {
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const AuthDialog(),
+    );
+    return result ?? false;
   }
 
   Future<void> _createBackup() async {
@@ -179,6 +196,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
             onPressed: _isLoading
                 ? null
                 : () async {
+                    // Verifica se precisa configurar credenciais
+                    if (!ApiConfig.hasCredentials) {
+                      final shouldContinue = await _showAuthDialog();
+                      if (!shouldContinue) return;
+                    }
+
                     setState(() {
                       _isLoading = true;
                       _status = 'Recarregando da API...';
