@@ -53,3 +53,4 @@ secrets.json
 # Backups may contain sensitive data
 backup_contatos_*.xlsx
 /Documents/backup_*.xlsx
+import-contacts-sample.csv

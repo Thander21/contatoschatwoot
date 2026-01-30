@@ -158,7 +158,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     setState(() => _status = 'Criando backup...');
 
     try {
-      final path = await _backupService.exportToExcel(
+      final path = await _backupService.exportToCsv(
         _contacts,
         onStatusUpdate: (status) {
           if (mounted) setState(() => _status = status);
@@ -335,7 +335,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 _stats!.withoutCompany,
                 Icons.business,
                 Colors.blue,
-                onTap: () => Navigator.pushNamed(context, '/company-management'),
+                onTap: () =>
+                    Navigator.pushNamed(context, '/company-management'),
               ),
               _buildIssueItem(
                 'Telefone inválido',
@@ -383,7 +384,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             const Divider(height: 24),
             _buildActionButton(
               'Fazer Backup Completo',
-              'Exportar todos os contatos para Excel',
+              'Exportar todos os contatos para CSV',
               Icons.backup,
               Colors.green,
               onPressed: _createBackup,
@@ -410,7 +411,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
               'Renomear e preencher empresas',
               Icons.business,
               Colors.purple,
-              onPressed: () => Navigator.pushNamed(context, '/company-management'),
+              onPressed: () =>
+                  Navigator.pushNamed(context, '/company-management'),
             ),
             const SizedBox(height: 12),
             _buildActionButton(
@@ -507,7 +509,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                 decoration: BoxDecoration(
                   color: isZero ? Colors.grey.shade400 : color,
                   borderRadius: BorderRadius.circular(12),
@@ -522,7 +525,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
               if (onTap != null && !isZero) ...[
                 const SizedBox(width: 8),
-                Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey.shade600),
+                Icon(Icons.arrow_forward_ios,
+                    size: 16, color: Colors.grey.shade600),
               ],
             ],
           ),
@@ -542,14 +546,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
       onPressed: _isLoading ? null : onPressed,
       style: OutlinedButton.styleFrom(
         padding: const EdgeInsets.all(16),
-        side: BorderSide(color: color.withOpacity(0.5)),
+        side: BorderSide(color: color.withValues(alpha: 0.5)),
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(icon, color: color, size: 24),
