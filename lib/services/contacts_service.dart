@@ -35,6 +35,10 @@ class ContactsService {
             hasMorePages = false;
           } else {
             for (var json in payload) {
+              // DEBUG: Log raw JSON for contact 317 only
+              if (json['id'] == 317) {
+                _logger.info('RAW JSON (Contact 317): ${jsonEncode(json)}');
+              }
               try {
                 allContacts.add(Contact.fromJson(json));
               } catch (e) {

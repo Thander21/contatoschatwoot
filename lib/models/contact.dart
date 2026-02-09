@@ -34,7 +34,8 @@ class Contact {
       email: json['email']?.toString(),
       phoneNumber: json['phone_number']?.toString() ?? '',
       identifier: json['identifier']?.toString(),
-      company: json['company']?.toString() ??
+      company: json['additional_attributes']?['company_name']?.toString() ??
+          json['company']?.toString() ??
           json['custom_attributes']?['company']?.toString(),
       createdAt: json['created_at'] != null
           ? _parseDateTime(json['created_at'])

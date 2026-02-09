@@ -2,7 +2,6 @@ import '../models/contact.dart';
 
 /// Serviço para gerenciamento de empresas e renomeação de contatos
 class CompanyService {
-
   /// Padrões comuns de empresa no nome
   static final _companyPatterns = [
     RegExp(r'\s+-\s+(.+)$'), // "Nome - Empresa"
@@ -46,18 +45,61 @@ class CompanyService {
 
   /// Processa um contato para extrair e preencher empresa
   Contact processContactCompany(Contact contact) {
-    // Se já tem empresa no campo, mantém
+    // Tenta extrair do nome usando separadores comuns
+    // PRIORIDADE: Limpeza de nome (sempre verifica se tem separador para limpar)
+
+    String? cleanName;
+    String? extractedCompany;
+
+    // Lista de separadores para tentar (ordem importa: mais específicos primeiro)
+    final separators = [' - ', '- ', ' | ', ' – ']; // Inclui hífen, traço, pipe
+
+    for (var separator in separators) {
+      final parts = contact.name.split(separator);
+      if (parts.length > 1) {
+        cleanName = parts[0].trim();
+        extractedCompany = parts.sublist(1).join(separator).trim();
+        break; // Encontrou, para
+      }
+    }
+
+    if (cleanName != null && extractedCompany != null) {
+      // Só atualiza se houver mudança real (nome limpo é diferente do original)
+      if (cleanName != contact.name) {
+        return contact.copyWith(
+          name: cleanName,
+          company: extractedCompany,
+          additionalAttributes: {
+            ...?contact.additionalAttributes,
+            'company_name': extractedCompany,
+          },
+          customAttributes: {
+            ...?contact.customAttributes,
+            'company': extractedCompany,
+            'company_extracted': true,
+            'company_extracted_at': DateTime.now().toIso8601String(),
+          },
+        );
+      }
+    }
+
+    // Se não precisou limpar nome e já tem empresa no campo, mantém
     if (contact.hasCompany) {
       return contact;
     }
 
-    // Tenta extrair do nome
-    final extractedCompany = extractCompanyFromName(contact.name);
-    if (extractedCompany != null) {
+    // Fallback para extração por regex se não tiver " - " explícito
+    final fallbackExtracted = extractCompanyFromName(contact.name);
+    if (fallbackExtracted != null) {
       return contact.copyWith(
-        company: extractedCompany,
+        company: fallbackExtracted,
+        additionalAttributes: {
+          ...?contact.additionalAttributes,
+          'company_name': fallbackExtracted,
+        },
         customAttributes: {
           ...?contact.customAttributes,
+          'company': fallbackExtracted,
           'company_extracted': true,
           'company_extracted_at': DateTime.now().toIso8601String(),
         },
@@ -74,8 +116,13 @@ class CompanyService {
     return contact.copyWith(
       name: newName,
       company: company,
+      additionalAttributes: {
+        ...?contact.additionalAttributes,
+        'company_name': company,
+      },
       customAttributes: {
         ...?contact.customAttributes,
+        'company': company,
         'company_added': true,
         'company_added_at': DateTime.now().toIso8601String(),
         'original_name': contact.name,
@@ -91,8 +138,7 @@ class CompanyService {
   /// Filtra contatos com empresa no nome mas não no campo
   List<Contact> getContactsWithCompanyInName(List<Contact> contacts) {
     return contacts.where((contact) {
-      final hasInName = hasCompanyInName(contact.name);
-      return hasInName && !contact.hasCompany;
+      return hasCompanyInName(contact.name);
     }).toList();
   }
 
@@ -106,7 +152,8 @@ class CompanyService {
     }
 
     return Map.fromEntries(
-      grouped.entries.toList()..sort((a, b) => b.value.length.compareTo(a.value.length)),
+      grouped.entries.toList()
+        ..sort((a, b) => b.value.length.compareTo(a.value.length)),
     );
   }
 
@@ -122,7 +169,8 @@ class CompanyService {
       final companyName = domain.split('.').first;
 
       // Ignora emails genéricos
-      if (!['gmail', 'hotmail', 'outlook', 'yahoo'].contains(companyName.toLowerCase())) {
+      if (!['gmail', 'hotmail', 'outlook', 'yahoo']
+          .contains(companyName.toLowerCase())) {
         return _capitalizeCompany(companyName);
       }
     }
