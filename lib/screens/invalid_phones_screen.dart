@@ -26,6 +26,11 @@ class _InvalidPhonesScreenState extends State<InvalidPhonesScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
 
+  // New State variables
+  final Map<int, bool> _historyStatus = {}; // id -> hasHistory
+  bool _isCheckingHistory = false;
+  String _historyFilter = 'all'; // 'all', 'has_history', 'no_history'
+
   @override
   void initState() {
     super.initState();
@@ -62,7 +67,8 @@ class _InvalidPhonesScreenState extends State<InvalidPhonesScreen> {
       if (mounted) {
         setState(() {
           _invalidContacts = invalid;
-          _status = '${invalid.length} contatos com telefones inválidos encontrados';
+          _status =
+              '${invalid.length} contatos com telefones inválidos encontrados';
           _isLoading = false;
         });
       }
@@ -78,10 +84,23 @@ class _InvalidPhonesScreenState extends State<InvalidPhonesScreen> {
   }
 
   List<Contact> get _filteredContacts {
-    if (_searchQuery.isEmpty) return _invalidContacts;
+    var list = _invalidContacts;
+
+    // Filter by history
+    if (_historyFilter != 'all') {
+      list = list.where((c) {
+        final hasHistory = _historyStatus[c.id];
+        if (hasHistory == null) {
+          return false; // Hide unchecked items when filtering
+        }
+        return _historyFilter == 'has_history' ? hasHistory : !hasHistory;
+      }).toList();
+    }
+
+    if (_searchQuery.isEmpty) return list;
 
     final query = _searchQuery.toLowerCase();
-    return _invalidContacts.where((contact) {
+    return list.where((contact) {
       final name = contact.name.toLowerCase();
       final email = contact.email?.toLowerCase() ?? '';
       final phone = contact.phoneNumber.toLowerCase();
@@ -92,6 +111,132 @@ class _InvalidPhonesScreenState extends State<InvalidPhonesScreen> {
           phone.contains(query) ||
           company.contains(query);
     }).toList();
+  }
+
+  Future<void> _recoverPhonesFromEmail() async {
+    final candidates = _invalidContacts.where((c) {
+      if (c.email == null || c.email!.isEmpty) return false;
+      // Check if email starts with possible phone number (e.g. 55...)
+      final parts = c.email!.split('@');
+      if (parts.isEmpty) return false;
+      final user = parts[0];
+
+      // Basic check: looks like a phone number?
+      final isNumeric = double.tryParse(user) != null;
+      if (!isNumeric) return false;
+
+      // Extract digits and check length
+      final digits = user.replaceAll(RegExp(r'\D'), '');
+      return digits.length >= 10 && digits.length <= 13;
+    }).toList();
+
+    if (candidates.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Nenhum email suspeito de ser telefone encontrado')),
+      );
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Recuperar Telefones do Email'),
+        content: Text(
+          'Encontrados ${candidates.length} contatos onde o email parece ser um telefone.\n\n'
+          'Deseja tentar atualizar esses telefones automaticamente?',
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancelar')),
+          ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Atualizar')),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() {
+      _isLoading = true;
+      _status = 'Atualizando contatos...';
+    });
+
+    int updatedCount = 0;
+
+    for (var contact in candidates) {
+      try {
+        final emailPart = contact.email!.split('@')[0];
+        final digits = emailPart.replaceAll(RegExp(r'\D'), '');
+
+        // Construct new phone number
+        String newPhone = digits;
+        if (!newPhone.startsWith('+')) {
+          if (newPhone.startsWith('55')) {
+            newPhone = '+$newPhone';
+          } else {
+            // Assume BR if 10-11 digits
+            if (newPhone.length >= 10 && newPhone.length <= 11) {
+              newPhone = '+55$newPhone';
+            }
+          }
+        }
+
+        final updated = contact.copyWith(phoneNumber: newPhone);
+        await _contactsService.updateContact(updated);
+        updatedCount++;
+      } catch (e) {
+        _logger.warning('Erro ao atualizar contato ${contact.id}', e);
+      }
+    }
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$updatedCount contatos atualizados')),
+      );
+      _loadInvalidContacts();
+    }
+  }
+
+  Future<void> _checkConversationHistory() async {
+    setState(() {
+      _isCheckingHistory = true;
+      _status = 'Verificando histórico de conversas...';
+    });
+
+    int checked = 0;
+    final total =
+        _filteredContacts.length; // Check only currently filtered/visible
+
+    for (var contact in _filteredContacts) {
+      if (_historyStatus.containsKey(contact.id)) {
+        checked++;
+        continue;
+      }
+
+      try {
+        final conversations =
+            await _contactsService.getContactConversations(contact.id!);
+        if (mounted) {
+          setState(() {
+            _historyStatus[contact.id!] = conversations.isNotEmpty;
+            _status = 'Verificando... $checked / $total';
+          });
+        }
+      } catch (e) {
+        _logger.warning('Erro ao verificar conversas para ${contact.id}', e);
+      }
+      checked++;
+    }
+
+    if (mounted) {
+      setState(() {
+        _isCheckingHistory = false;
+        _status = 'Verificação concluída';
+      });
+    }
   }
 
   Future<void> _deleteSelected() async {
@@ -136,9 +281,8 @@ class _InvalidPhonesScreenState extends State<InvalidPhonesScreen> {
     final List<int> deletedIds = [];
 
     try {
-      final contactsToDelete = _invalidContacts
-          .where((c) => _selectedIds.contains(c.id))
-          .toList();
+      final contactsToDelete =
+          _invalidContacts.where((c) => _selectedIds.contains(c.id)).toList();
 
       for (var contact in contactsToDelete) {
         try {
@@ -149,7 +293,8 @@ class _InvalidPhonesScreenState extends State<InvalidPhonesScreen> {
 
           if (mounted) {
             setState(() {
-              _status = 'Excluindo... $successCount de ${contactsToDelete.length}';
+              _status =
+                  'Excluindo... $successCount de ${contactsToDelete.length}';
             });
           }
         } catch (e) {
@@ -206,155 +351,218 @@ class _InvalidPhonesScreenState extends State<InvalidPhonesScreen> {
             ),
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _isLoading || _isDeleting ? null : _loadInvalidContacts,
+            onPressed: _isLoading || _isDeleting || _isCheckingHistory
+                ? null
+                : _loadInvalidContacts,
             tooltip: 'Atualizar lista',
+          ),
+          PopupMenuButton<String>(
+            onSelected: (value) {
+              if (value == 'recover') _recoverPhonesFromEmail();
+              if (value == 'check_history') _checkConversationHistory();
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'recover',
+                child: Text('Recuperar via Email'),
+              ),
+              const PopupMenuItem(
+                value: 'check_history',
+                child: Text('Verificar Histórico'),
+              ),
+            ],
           ),
         ],
       ),
       body: SafeArea(
         child: Column(
           children: [
-          // Campo de busca
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                labelText: 'Buscar contatos',
-                prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8.0),
+            // Campo de busca
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  labelText: 'Buscar contatos',
+                  prefixIcon: const Icon(Icons.search),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8.0),
+                  ),
+                  suffixIcon: _searchController.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() => _searchQuery = '');
+                          },
+                        )
+                      : null,
                 ),
-                suffixIcon: _searchController.text.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          _searchController.clear();
-                          setState(() => _searchQuery = '');
-                        },
-                      )
-                    : null,
+                onChanged: (value) {
+                  setState(() => _searchQuery = value);
+                },
               ),
-              onChanged: (value) {
-                setState(() => _searchQuery = value);
-              },
             ),
-          ),
 
-          // Status e botões de seleção
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-            child: Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            // History Filter
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
                   children: [
-                    Expanded(child: Text(_status, style: const TextStyle(fontSize: 12))),
-                    Text('${filtered.length} itens | ${_selectedIds.length} selecionados'),
+                    const Text('Filtro: '),
+                    Wrap(
+                      spacing: 8,
+                      children: [
+                        ChoiceChip(
+                          label: const Text('Todos'),
+                          selected: _historyFilter == 'all',
+                          onSelected: (v) =>
+                              setState(() => _historyFilter = 'all'),
+                        ),
+                        ChoiceChip(
+                          label: const Text('Com Conversas'),
+                          selected: _historyFilter == 'has_history',
+                          onSelected: (v) =>
+                              setState(() => _historyFilter = 'has_history'),
+                        ),
+                        ChoiceChip(
+                          label: const Text('Sem Conversas'),
+                          selected: _historyFilter == 'no_history',
+                          onSelected: (v) =>
+                              setState(() => _historyFilter = 'no_history'),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
-                if (filtered.isNotEmpty) ...[
-                  const SizedBox(height: 8),
+              ),
+            ),
+
+            // Status e botões de seleção
+            Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              child: Column(
+                children: [
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      OutlinedButton.icon(
-                        onPressed: _isDeleting
-                            ? null
-                            : () {
-                                setState(() {
-                                  _selectedIds.clear();
-                                  for (var contact in filtered) {
-                                    if (contact.id != null) {
-                                      _selectedIds.add(contact.id!);
-                                    }
-                                  }
-                                });
-                              },
-                        icon: const Icon(Icons.check_box, size: 18),
-                        label: const Text('Selecionar Todos'),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      OutlinedButton.icon(
-                        onPressed: _isDeleting || _selectedIds.isEmpty
-                            ? null
-                            : () {
-                                setState(() => _selectedIds.clear());
-                              },
-                        icon: const Icon(Icons.check_box_outline_blank, size: 18),
-                        label: const Text('Desmarcar Todos'),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        ),
-                      ),
+                      Expanded(
+                          child: Text(_status,
+                              style: const TextStyle(fontSize: 12))),
+                      Text(
+                          '${filtered.length} itens | ${_selectedIds.length} selecionados'),
                     ],
                   ),
-                ],
-              ],
-            ),
-          ),
-
-          // Barra de ações quando tem seleção
-          if (_selectedIds.isNotEmpty)
-            Container(
-              padding: const EdgeInsets.all(8.0),
-              color: Colors.red.shade50,
-              child: Row(
-                children: [
-                  const Icon(Icons.warning, color: Colors.red),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      '${_selectedIds.length} contato(s) selecionado(s) para exclusão',
-                      style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                  if (filtered.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: _isDeleting
+                              ? null
+                              : () {
+                                  setState(() {
+                                    _selectedIds.clear();
+                                    for (var contact in filtered) {
+                                      if (contact.id != null) {
+                                        _selectedIds.add(contact.id!);
+                                      }
+                                    }
+                                  });
+                                },
+                          icon: const Icon(Icons.check_box, size: 18),
+                          label: const Text('Selecionar Todos'),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 8),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        OutlinedButton.icon(
+                          onPressed: _isDeleting || _selectedIds.isEmpty
+                              ? null
+                              : () {
+                                  setState(() => _selectedIds.clear());
+                                },
+                          icon: const Icon(Icons.check_box_outline_blank,
+                              size: 18),
+                          label: const Text('Desmarcar Todos'),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 8),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  TextButton(
-                    onPressed: () => setState(() => _selectedIds.clear()),
-                    child: const Text('Limpar'),
-                  ),
-                  ElevatedButton.icon(
-                    onPressed: _deleteSelected,
-                    icon: const Icon(Icons.delete),
-                    label: const Text('Excluir'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
-                      foregroundColor: Colors.white,
-                    ),
-                  ),
+                  ],
                 ],
               ),
             ),
 
-          // Lista de contatos
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _isDeleting
-                    ? Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const CircularProgressIndicator(),
-                            const SizedBox(height: 16),
-                            Text(_status),
-                          ],
-                        ),
-                      )
-                    : filtered.isEmpty
-                        ? const Center(
-                            child: Text('Nenhum contato com telefone inválido encontrado'))
-                        : ListView.builder(
-                            itemCount: filtered.length,
-                            itemBuilder: (context, index) {
-                              return _buildContactCard(filtered[index]);
-                            },
+            // Barra de ações quando tem seleção
+            if (_selectedIds.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.all(8.0),
+                color: Colors.red.shade50,
+                child: Row(
+                  children: [
+                    const Icon(Icons.warning, color: Colors.red),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '${_selectedIds.length} contato(s) selecionado(s) para exclusão',
+                        style: const TextStyle(
+                            color: Colors.red, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () => setState(() => _selectedIds.clear()),
+                      child: const Text('Limpar'),
+                    ),
+                    ElevatedButton.icon(
+                      onPressed: _deleteSelected,
+                      icon: const Icon(Icons.delete),
+                      label: const Text('Excluir'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+            // Lista de contatos
+            Expanded(
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _isDeleting
+                      ? Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const CircularProgressIndicator(),
+                              const SizedBox(height: 16),
+                              Text(_status),
+                            ],
                           ),
-          ),
-        ],
+                        )
+                      : filtered.isEmpty
+                          ? const Center(
+                              child: Text(
+                                  'Nenhum contato com telefone inválido encontrado'))
+                          : ListView.builder(
+                              itemCount: filtered.length,
+                              itemBuilder: (context, index) {
+                                return _buildContactCard(filtered[index]);
+                              },
+                            ),
+            ),
+          ],
         ),
       ),
     );
@@ -424,6 +632,25 @@ class _InvalidPhonesScreenState extends State<InvalidPhonesScreen> {
                 ],
               ),
             ],
+            if (contact.sourceId != null) ...[
+              const SizedBox(height: 2),
+              Row(
+                children: [
+                  const Icon(Icons.input, size: 16, color: Colors.blue),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      'Origem: ${contact.sourceId}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.blue,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
             const SizedBox(height: 4),
             Text(
               _getInvalidReason(contact.phoneNumber),
@@ -433,6 +660,35 @@ class _InvalidPhonesScreenState extends State<InvalidPhonesScreen> {
                 fontStyle: FontStyle.italic,
               ),
             ),
+            if (_historyStatus.containsKey(contact.id))
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Row(
+                  children: [
+                    Icon(
+                      _historyStatus[contact.id!]!
+                          ? Icons.chat
+                          : Icons.chat_bubble_outline,
+                      size: 16,
+                      color: _historyStatus[contact.id!]!
+                          ? Colors.green
+                          : Colors.orange,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      _historyStatus[contact.id!]!
+                          ? 'Tem conversas'
+                          : 'Sem histórico',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: _historyStatus[contact.id!]!
+                            ? Colors.green
+                            : Colors.orange,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
           ],
         ),
       ),

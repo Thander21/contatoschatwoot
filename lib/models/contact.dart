@@ -4,22 +4,26 @@ class Contact {
   final String name;
   final String? email;
   final String phoneNumber;
+  final String? identifier;
   final String? company;
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final Map<String, dynamic>? customAttributes;
   final Map<String, dynamic>? additionalAttributes;
+  final List<dynamic>? contactInboxes;
 
   Contact({
     this.id,
     required this.name,
     this.email,
     required this.phoneNumber,
+    this.identifier,
     this.company,
     this.createdAt,
     this.updatedAt,
     this.customAttributes,
     this.additionalAttributes,
+    this.contactInboxes,
   });
 
   /// Cria um Contact a partir de JSON da API
@@ -29,8 +33,10 @@ class Contact {
       name: json['name']?.toString() ?? '',
       email: json['email']?.toString(),
       phoneNumber: json['phone_number']?.toString() ?? '',
-      company: json['company']?.toString() ??
-               json['custom_attributes']?['company']?.toString(),
+      identifier: json['identifier']?.toString(),
+      company: json['additional_attributes']?['company_name']?.toString() ??
+          json['company']?.toString() ??
+          json['custom_attributes']?['company']?.toString(),
       createdAt: json['created_at'] != null
           ? _parseDateTime(json['created_at'])
           : null,
@@ -43,6 +49,7 @@ class Contact {
       additionalAttributes: json['additional_attributes'] != null
           ? Map<String, dynamic>.from(json['additional_attributes'])
           : null,
+      contactInboxes: json['contact_inboxes'] as List<dynamic>?,
     );
   }
 
@@ -70,9 +77,12 @@ class Contact {
       'name': name,
       if (email != null) 'email': email,
       'phone_number': phoneNumber,
+      if (identifier != null) 'identifier': identifier,
       if (company != null) 'company': company,
       if (customAttributes != null) 'custom_attributes': customAttributes,
-      if (additionalAttributes != null) 'additional_attributes': additionalAttributes,
+      if (additionalAttributes != null)
+        'additional_attributes': additionalAttributes,
+      if (contactInboxes != null) 'contact_inboxes': contactInboxes,
     };
   }
 
@@ -82,23 +92,65 @@ class Contact {
     String? name,
     String? email,
     String? phoneNumber,
+    String? identifier,
     String? company,
     DateTime? createdAt,
     DateTime? updatedAt,
     Map<String, dynamic>? customAttributes,
     Map<String, dynamic>? additionalAttributes,
+    List<dynamic>? contactInboxes,
   }) {
     return Contact(
       id: id ?? this.id,
       name: name ?? this.name,
       email: email ?? this.email,
       phoneNumber: phoneNumber ?? this.phoneNumber,
+      identifier: identifier ?? this.identifier,
       company: company ?? this.company,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       customAttributes: customAttributes ?? this.customAttributes,
       additionalAttributes: additionalAttributes ?? this.additionalAttributes,
+      contactInboxes: contactInboxes ?? this.contactInboxes,
     );
+  }
+
+  /// Retorna o JSON raw dos inboxes para debug
+  String get inboxesRaw {
+    if (contactInboxes == null) return 'Nenhum inbox';
+    return contactInboxes.toString();
+  }
+
+  /// Tenta identificar a origem (ex: waId@whatsapp)
+  String? get sourceId {
+    // 1. Prioridade: Campo identifier direto da API
+    if (identifier != null && identifier!.isNotEmpty) {
+      return identifier;
+    }
+
+    if (contactInboxes == null || contactInboxes!.isEmpty) return null;
+
+    // 2. Procura valor com @ em QUALQUER campo do inbox
+    for (var inbox in contactInboxes!) {
+      if (inbox is Map) {
+        for (var value in inbox.values) {
+          final str = value?.toString();
+          if (str != null && str.contains('@')) {
+            return str;
+          }
+        }
+      }
+    }
+
+    // 2. Fallback: Retorna o primeiro source_id disponível
+    for (var inbox in contactInboxes!) {
+      final sourceId = inbox['source_id']?.toString();
+      if (sourceId != null && sourceId.isNotEmpty) {
+        return sourceId;
+      }
+    }
+
+    return null;
   }
 
   /// Verifica se o telefone tem código +55

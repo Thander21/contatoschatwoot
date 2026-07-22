@@ -1,0 +1,6 @@
+0000000000000000000000000000000000000000 b9e02d69faaafafc563d489c71cf75f034d72a7f Your Name <you@example.com> 1761919116 +0000	clone: from https://github.com/Thander21/contatoschatwoot.git
+b9e02d69faaafafc563d489c71cf75f034d72a7f 069cce23dc5acc0da6a3920c3c0241d3056f7c9a Your Name <you@example.com> 1761950787 +0000	commit: tela recriado com diversas funções e cache dos contatos
+069cce23dc5acc0da6a3920c3c0241d3056f7c9a a3dbeae514e0497430972b34ebd03367ff189c32 Your Name <you@example.com> 1762035289 +0000	commit: Ajustes feito nos dados e detalhes da tela para ter mais informações dos erros de cadastro
+a3dbeae514e0497430972b34ebd03367ff189c32 f1e7fd6a41e00c4565f2ad957933e3d69cde2a79 Your Name <you@example.com> 1762038994 +0000	commit: documentação github, tornar projeto publico e fazer testes.
+f1e7fd6a41e00c4565f2ad957933e3d69cde2a79 dedae234b066fd55360c22b4ddea0dead3c2e263 PDV D+ AI Assistant <ai@pdvd-plus.com> 1769776287 +0000	commit: feat: implementar identificador de origem e ajustar backup para CSV
+dedae234b066fd55360c22b4ddea0dead3c2e263 5164c5e96087cd03000440680d7c7aa414ff4b51 PDV D+ AI Assistant <ai@pdvd-plus.com> 1770597257 +0000	commit: fix: ajustes para salvar empresa

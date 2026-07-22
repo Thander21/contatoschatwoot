@@ -92,7 +92,8 @@ class BackupService {
   }) async {
     final timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
     final fileName = 'contatos_${category.toLowerCase()}_$timestamp.xlsx';
-    return exportToExcel(contacts, customFileName: fileName, onStatusUpdate: onStatusUpdate);
+    return exportToExcel(contacts,
+        customFileName: fileName, onStatusUpdate: onStatusUpdate);
   }
 
   /// Lista todos os backups existentes
@@ -158,5 +159,98 @@ class BackupService {
       'modified': stat.modified,
       'modifiedFormatted': DateFormat('dd/MM/yyyy HH:mm').format(stat.modified),
     };
+  }
+
+  /// Exporta contatos para arquivo CSV no formato do modelo import-contacts-sample.csv
+  /// Salva na pasta Downloads do usuário
+  Future<String> exportToCsv(
+    List<Contact> contacts, {
+    Function(String)? onStatusUpdate,
+  }) async {
+    try {
+      onStatusUpdate?.call('Preparando arquivo CSV...');
+
+      final headers = [
+        'id',
+        'name',
+        'email',
+        'identifier',
+        'phone_number',
+        'ip_address',
+        'custom_attribute_1',
+        'custom_attribute_2'
+      ];
+
+      final rows = <List<String>>[];
+      rows.add(headers);
+
+      onStatusUpdate?.call('Processando ${contacts.length} contatos...');
+
+      for (int i = 0; i < contacts.length; i++) {
+        final contact = contacts[i];
+
+        rows.add([
+          contact.id?.toString() ?? '',
+          contact.name,
+          contact.email ?? '',
+          contact.identifier ?? contact.id?.toString() ?? '',
+          contact.phoneNumber,
+          contact.additionalAttributes?['ip_address']?.toString() ?? '',
+          contact.customAttributes?['custom_attribute_1']?.toString() ?? '',
+          contact.customAttributes?['custom_attribute_2']?.toString() ?? '',
+        ]);
+      }
+
+      final csvContent = StringBuffer();
+      for (final row in rows) {
+        // Simple CSV escaping: if contains comma, quote it.
+        final escapedRow = row.map((field) {
+          if (field.contains(',') ||
+              field.contains('"') ||
+              field.contains('\n')) {
+            return '"${field.replaceAll('"', '""')}"';
+          }
+          return field;
+        }).join(',');
+        csvContent.writeln(escapedRow);
+      }
+
+      // Get Downloads directory
+      Directory? downloadsDir;
+      if (Platform.isWindows) {
+        // Creating a safe bet for generic Windows downloads path or using path_provider if available updates support it.
+        // path_provider getDownloadsDirectory is available in recent versions.
+        downloadsDir = await getDownloadsDirectory();
+      }
+
+      // Fallback if null (generic construction)
+      if (downloadsDir == null) {
+        final userProfile = Platform.environment['USERPROFILE'];
+        if (userProfile != null) {
+          downloadsDir = Directory('$userProfile\\Downloads');
+        }
+      }
+
+      if (downloadsDir == null || !downloadsDir.existsSync()) {
+        // Fallback to Documents if Downloads not found
+        downloadsDir = await getApplicationDocumentsDirectory();
+      }
+
+      final timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
+      final fileName = 'backup_chatwoot_$timestamp.csv';
+      final filePath = '${downloadsDir.path}${Platform.pathSeparator}$fileName';
+
+      final file = File(filePath);
+      await file.writeAsString(csvContent.toString());
+
+      onStatusUpdate?.call('Backup CSV salvo em Downloads!');
+      _logger.info('Backup CSV criado: $filePath');
+
+      return filePath;
+    } catch (e) {
+      _logger.severe('Erro ao criar backup CSV', e);
+      onStatusUpdate?.call('Erro ao criar CSV: $e');
+      rethrow;
+    }
   }
 }

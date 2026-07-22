@@ -90,7 +90,8 @@ class _ContactsListScreenState extends State<ContactsListScreen> {
     try {
       final path = await _backupService.exportToExcel(
         _filteredContacts,
-        customFileName: 'lista_contatos_${DateTime.now().millisecondsSinceEpoch}.xlsx',
+        customFileName:
+            'lista_contatos_${DateTime.now().millisecondsSinceEpoch}.xlsx',
         onStatusUpdate: (status) {
           if (mounted) setState(() => _status = status);
         },
@@ -159,7 +160,8 @@ class _ContactsListScreenState extends State<ContactsListScreen> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -193,7 +195,8 @@ class _ContactsListScreenState extends State<ContactsListScreen> {
       margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: contact.hasCountryCode ? Colors.green : Colors.orange,
+          backgroundColor:
+              contact.hasCountryCode ? Colors.green : Colors.orange,
           child: Text(
             contact.name.isNotEmpty ? contact.name[0].toUpperCase() : '?',
             style: const TextStyle(color: Colors.white),
@@ -204,7 +207,8 @@ class _ContactsListScreenState extends State<ContactsListScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(contact.phoneNumber),
-            if (contact.email != null) Text(contact.email!, style: const TextStyle(fontSize: 12)),
+            if (contact.email != null)
+              Text(contact.email!, style: const TextStyle(fontSize: 12)),
             if (contact.company != null)
               Text(
                 contact.company!,
@@ -242,12 +246,32 @@ class _ContactsListScreenState extends State<ContactsListScreen> {
             children: [
               _buildDetailRow('ID', contact.id?.toString() ?? 'N/A'),
               _buildDetailRow('Telefone', contact.phoneNumber),
-              if (contact.email != null) _buildDetailRow('Email', contact.email!),
-              if (contact.company != null) _buildDetailRow('Empresa', contact.company!),
+              if (contact.email != null)
+                _buildDetailRow('Email', contact.email!),
+              if (contact.company != null)
+                _buildDetailRow('Empresa', contact.company!),
               if (contact.createdAt != null)
-                _buildDetailRow('Criado', contact.createdAt.toString().substring(0, 16)),
+                _buildDetailRow(
+                    'Criado', contact.createdAt.toString().substring(0, 16)),
               if (contact.updatedAt != null)
-                _buildDetailRow('Atualizado', contact.updatedAt.toString().substring(0, 16)),
+                _buildDetailRow('Atualizado',
+                    contact.updatedAt.toString().substring(0, 16)),
+              if (contact.sourceId != null)
+                _buildDetailRow('Origem', contact.sourceId!),
+              ExpansionTile(
+                title: const Text('Dados de Origem (Debug)',
+                    style: TextStyle(fontSize: 12)),
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: SelectableText(
+                      contact.inboxesRaw,
+                      style:
+                          const TextStyle(fontSize: 10, fontFamily: 'Courier'),
+                    ),
+                  ),
+                ],
+              ),
               const Divider(),
               _buildStatusRow('Código +55', contact.hasCountryCode),
               _buildStatusRow('Telefone válido', contact.hasValidPhone),

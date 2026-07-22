@@ -9,7 +9,8 @@ class CompanyManagementScreen extends StatefulWidget {
   const CompanyManagementScreen({super.key});
 
   @override
-  State<CompanyManagementScreen> createState() => _CompanyManagementScreenState();
+  State<CompanyManagementScreen> createState() =>
+      _CompanyManagementScreenState();
 }
 
 class _CompanyManagementScreenState extends State<CompanyManagementScreen> {
@@ -51,12 +52,20 @@ class _CompanyManagementScreenState extends State<CompanyManagementScreen> {
 
       if (mounted) setState(() => _status = 'Analisando empresas...');
 
-      final withoutCompany = _companyService.getContactsWithoutCompany(allContacts);
-      final withCompanyInName = _companyService.getContactsWithCompanyInName(allContacts);
+      final withoutCompany =
+          _companyService.getContactsWithoutCompany(allContacts);
+      final withCompanyInName =
+          _companyService.getContactsWithCompanyInName(allContacts);
+
+      // Deduplica usando Map por ID
+      final uniqueContacts = <int, Contact>{};
+      for (var c in [...withoutCompany, ...withCompanyInName]) {
+        if (c.id != null) uniqueContacts[c.id!] = c;
+      }
 
       // Gera sugestões
       final suggestions = <int, String>{};
-      for (var contact in [...withoutCompany, ...withCompanyInName]) {
+      for (var contact in uniqueContacts.values) {
         final suggested = _companyService.suggestCompany(contact);
         if (suggested != null && contact.id != null) {
           suggestions[contact.id!] = suggested;
@@ -64,9 +73,9 @@ class _CompanyManagementScreenState extends State<CompanyManagementScreen> {
       }
 
       setState(() {
-        _problemContacts = [...withoutCompany, ...withCompanyInName];
+        _problemContacts = uniqueContacts.values.toList();
         _companySuggestions.addAll(suggestions);
-        _status = '${_problemContacts.length} contatos sem empresa';
+        _status = '${_problemContacts.length} contatos para análise';
         _isLoading = false;
       });
     } catch (e) {
@@ -81,7 +90,9 @@ class _CompanyManagementScreenState extends State<CompanyManagementScreen> {
   List<Contact> get _filteredContacts {
     if (_filterType == 'todos') return _problemContacts;
     if (_filterType == 'com_sugestao') {
-      return _problemContacts.where((c) => _companySuggestions.containsKey(c.id)).toList();
+      return _problemContacts
+          .where((c) => _companySuggestions.containsKey(c.id))
+          .toList();
     }
     if (_filterType == 'no_nome') {
       return _companyService.getContactsWithCompanyInName(_problemContacts);
@@ -114,20 +125,47 @@ class _CompanyManagementScreenState extends State<CompanyManagementScreen> {
           final company = _companySuggestions[contact.id]!;
           updated = _companyService.processContactCompany(contact);
           if (!updated.hasCompany) {
-            updated = updated.copyWith(company: company);
+            updated = updated.copyWith(
+              company: company,
+              additionalAttributes: {
+                ...?updated.additionalAttributes,
+                'company_name': company,
+              },
+              customAttributes: {
+                ...?updated.customAttributes,
+                'company': company,
+                'company_source': 'suggestion',
+              },
+            );
           }
         } else {
           // Apenas processa (extrai do nome se houver)
           updated = _companyService.processContactCompany(contact);
         }
 
-        if (updated != contact) {
+        // Verifica se houve mudança real (ignorando operator== que checa apenas ID)
+        if (updated.name != contact.name ||
+            updated.company != contact.company ||
+            updated.customAttributes?['company_extracted'] !=
+                contact.customAttributes?['company_extracted'] ||
+            updated.additionalAttributes?['company_name'] !=
+                contact.additionalAttributes?['company_name']) {
           contactsToUpdate.add(updated);
         }
       }
 
       if (contactsToUpdate.isEmpty) {
-        throw Exception('Nenhum contato foi modificado');
+        _logger.info('Nenhum contato precisou ser atualizado');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                  'Nenhum dos contatos selecionados precisou de alteração or pôde ser processado automaticamente.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+        return;
       }
 
       final result = await _contactsService.updateMultipleContacts(
@@ -143,7 +181,8 @@ class _CompanyManagementScreenState extends State<CompanyManagementScreen> {
             content: Text(
               'Concluído!\n${result['success']} sucessos, ${result['errors']} erros',
             ),
-            backgroundColor: Colors.green,
+            backgroundColor:
+                result['errors'] > 0 ? Colors.orange : Colors.green,
           ),
         );
 
@@ -153,11 +192,14 @@ class _CompanyManagementScreenState extends State<CompanyManagementScreen> {
         _selectedIds.clear();
         _loadContacts();
       }
-    } catch (e) {
-      _logger.severe('Erro ao processar', e);
+    } catch (e, stackTrace) {
+      _logger.severe('Erro ao processar', e, stackTrace);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro: $e')),
+          SnackBar(
+            content: Text('Erro ao processar: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } finally {
@@ -169,7 +211,9 @@ class _CompanyManagementScreenState extends State<CompanyManagementScreen> {
 
   void _showEditDialog(Contact contact) {
     final controller = TextEditingController(
-      text: _companySuggestions[contact.id] ?? _companyService.suggestCompany(contact) ?? '',
+      text: _companySuggestions[contact.id] ??
+          _companyService.suggestCompany(contact) ??
+          '',
     );
 
     showDialog(
@@ -180,7 +224,8 @@ class _CompanyManagementScreenState extends State<CompanyManagementScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Contato: ${contact.name}', style: const TextStyle(fontWeight: FontWeight.bold)),
+            Text('Contato: ${contact.name}',
+                style: const TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
             TextField(
               controller: controller,
@@ -236,106 +281,136 @@ class _CompanyManagementScreenState extends State<CompanyManagementScreen> {
       body: SafeArea(
         child: Column(
           children: [
-          _buildFilterChips(),
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(child: Text(_status, style: const TextStyle(fontSize: 12))),
-                    Text('${filtered.length} itens | ${_selectedIds.length} selecionados'),
-                  ],
-                ),
-                if (filtered.isNotEmpty) ...[
-                  const SizedBox(height: 8),
+            _buildFilterChips(),
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                children: [
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      OutlinedButton.icon(
-                        onPressed: _isProcessing
-                            ? null
-                            : () {
-                                setState(() {
-                                  _selectedIds.clear();
-                                  for (var contact in filtered) {
-                                    if (contact.id != null) {
-                                      _selectedIds.add(contact.id!);
-                                    }
-                                  }
-                                });
-                              },
-                        icon: const Icon(Icons.check_box, size: 18),
-                        label: const Text('Selecionar Todos'),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      OutlinedButton.icon(
-                        onPressed: _isProcessing || _selectedIds.isEmpty
-                            ? null
-                            : () {
-                                setState(() => _selectedIds.clear());
-                              },
-                        icon: const Icon(Icons.check_box_outline_blank, size: 18),
-                        label: const Text('Desmarcar Todos'),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        ),
-                      ),
+                      Expanded(
+                          child: Text(_status,
+                              style: const TextStyle(fontSize: 12))),
+                      Text(
+                          '${filtered.length} itens | ${_selectedIds.length} selecionados'),
                     ],
                   ),
-                ],
-              ],
-            ),
-          ),
-          if (_selectedIds.isNotEmpty)
-            Container(
-              padding: const EdgeInsets.all(8.0),
-              color: Colors.purple.shade50,
-              child: Row(
-                children: [
-                  const Icon(Icons.info_outline, color: Colors.purple),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      '${_selectedIds.length} contato(s) selecionado(s)',
-                      style: const TextStyle(color: Colors.purple),
+                  if (filtered.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: _isProcessing
+                              ? null
+                              : () {
+                                  setState(() {
+                                    _selectedIds.clear();
+                                    for (var contact in filtered) {
+                                      if (_companySuggestions
+                                              .containsKey(contact.id) &&
+                                          contact.id != null) {
+                                        _selectedIds.add(contact.id!);
+                                      }
+                                    }
+                                  });
+                                },
+                          icon: const Icon(Icons.auto_awesome, size: 18),
+                          label: const Text('Com Sugestão'),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 8),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        OutlinedButton.icon(
+                          onPressed: _isProcessing
+                              ? null
+                              : () {
+                                  setState(() {
+                                    _selectedIds.clear();
+                                    for (var contact in filtered) {
+                                      if (contact.id != null) {
+                                        _selectedIds.add(contact.id!);
+                                      }
+                                    }
+                                  });
+                                },
+                          icon: const Icon(Icons.check_box, size: 18),
+                          label: const Text('Selecionar Todos'),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 8),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        OutlinedButton.icon(
+                          onPressed: _isProcessing || _selectedIds.isEmpty
+                              ? null
+                              : () {
+                                  setState(() => _selectedIds.clear());
+                                },
+                          icon: const Icon(Icons.check_box_outline_blank,
+                              size: 18),
+                          label: const Text('Desmarcar Todos'),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 8),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  TextButton(
-                    onPressed: () => setState(() => _selectedIds.clear()),
-                    child: const Text('Limpar'),
-                  ),
+                  ],
                 ],
               ),
             ),
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _isProcessing
-                    ? const Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            CircularProgressIndicator(),
-                            SizedBox(height: 16),
-                            Text('Processando...'),
-                          ],
-                        ),
-                      )
-                    : filtered.isEmpty
-                        ? const Center(child: Text('Todos os contatos têm empresa'))
-                        : ListView.builder(
-                            itemCount: filtered.length,
-                            itemBuilder: (context, index) {
-                              return _buildContactCard(filtered[index]);
-                            },
+            if (_selectedIds.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.all(8.0),
+                color: Colors.purple.shade50,
+                child: Row(
+                  children: [
+                    const Icon(Icons.info_outline, color: Colors.purple),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '${_selectedIds.length} contato(s) selecionado(s)',
+                        style: const TextStyle(color: Colors.purple),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () => setState(() => _selectedIds.clear()),
+                      child: const Text('Limpar'),
+                    ),
+                  ],
+                ),
+              ),
+            Expanded(
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _isProcessing
+                      ? const Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              CircularProgressIndicator(),
+                              SizedBox(height: 16),
+                              Text('Processando...'),
+                            ],
                           ),
-          ),
-        ],
+                        )
+                      : filtered.isEmpty
+                          ? const Center(
+                              child: Text('Todos os contatos têm empresa'))
+                          : ListView.builder(
+                              itemCount: filtered.length,
+                              itemBuilder: (context, index) {
+                                return _buildContactCard(filtered[index]);
+                              },
+                            ),
+            ),
+          ],
         ),
       ),
       floatingActionButton: _selectedIds.isEmpty
